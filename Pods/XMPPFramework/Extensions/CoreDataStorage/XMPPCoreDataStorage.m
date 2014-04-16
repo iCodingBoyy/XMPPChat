@@ -699,9 +699,10 @@ static NSMutableSet *databaseFileNames;
 	// If you even comtemplate ignoring this warning,
 	// then you need to go read the documentation for core data,
 	// specifically the section entitled "Concurrency with Core Data".
-	// 
+	//
+
 	NSAssert([NSThread isMainThread], @"Context reserved for main thread only");
-	// 
+	//
 	// Do NOT remove the assert statment above!
 	// Read the comments above!
 	// 
@@ -729,7 +730,6 @@ static NSMutableSet *databaseFileNames;
 		                                         selector:@selector(managedObjectContextDidSave:)
 		                                             name:NSManagedObjectContextDidSaveNotification
 		                                           object:nil];
-		
 		// Todo: If we knew that our private managedObjectContext was going to be the only one writing to the database,
 		// then a small optimization would be to use it as the object when registering above.
 	}

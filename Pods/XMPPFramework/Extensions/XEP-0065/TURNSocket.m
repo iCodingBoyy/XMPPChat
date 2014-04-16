@@ -101,6 +101,8 @@ static NSMutableArray *proxyCandidates;
  * That is, the IQ must have a query with the proper namespace,
  * and it must not correspond to an existing TURNSocket.
 **/
+
+// 交互初始化，检查是不是新的请求<可能已经存在>
 + (BOOL)isNewStartTURNRequest:(XMPPIQ *)iq
 {
 	XMPPLogTrace();
@@ -149,11 +151,13 @@ static NSMutableArray *proxyCandidates;
 	return NO;
 }
 
+
 /**
  * Returns a list of proxy candidates.
  * 
  * You may want to configure this to include NSUserDefaults stuff, or implement your own static/dynamic list.
 **/
+// 返回代理候选列表
 + (NSArray *)proxyCandidates
 {
 	NSArray *result = nil;
@@ -168,6 +172,7 @@ static NSMutableArray *proxyCandidates;
 	return result;
 }
 
+// 设置代理候选列表
 + (void)setProxyCandidates:(NSArray *)candidates
 {
 	@synchronized(proxyCandidates)
@@ -369,9 +374,13 @@ static NSMutableArray *proxyCandidates;
 		// Start the TURN procedure
 		
 		if (isClient)
+        {
 			[self queryProxyCandidates];
+        }
 		else
+        {
 			[self targetConnect];
+        }
 		
 	}});
 }
@@ -421,6 +430,27 @@ static NSMutableArray *proxyCandidates;
  * Sends the request, from initiator to target, to start a connection to one of the streamhosts.
  * This method automatically updates the state.
 **/
+// 初始方通知目标方流主机
+
+/*
+ <iq type='set'
+     from='initiator@example.com/foo'
+     to='target@example.org/bar'
+     id='initiate'>
+     <query xmlns='http://jabber.org/protocol/bytestreams'
+            sid='mySID'
+            mode='tcp'>
+            <streamhost
+                    jid='initiator@example.com/foo'
+                    host='192.168.4.1'
+                    port='5086'/>
+            <streamhost
+                    jid='streamhostproxy.example.net'
+                    host='24.24.24.1'
+                    zeroconf='_jabber.bytestreams'/>
+    </query>
+ </iq>
+ */
 - (void)sendRequest
 {
 	NSAssert(isClient, @"Only the Initiator sends the request");
@@ -455,17 +485,23 @@ static NSMutableArray *proxyCandidates;
 /**
  * Sends the reply, from target to initiator, notifying the initiator of the streamhost we connected to.
 **/
+
+// 目标方确认SOCKS5连接
+/*
+ <iq type='result'
+    from='target@example.org/bar'
+    to='initiator@example.com/foo'
+    id='initiate'>
+     <query xmlns='http://jabber.org/protocol/bytestreams'>
+        <streamhost-used jid='streamhostproxy.example.net'/>
+     </query>
+ </iq>
+ */
 - (void)sendReply
 {
 	NSAssert(!isClient, @"Only the Target sends the reply");
 	
 	XMPPLogTrace();
-	
-	// <iq type="result" to="initiator" id="123">
-	//   <query xmlns="http://jabber.org/protocol/bytestreams" sid="123">
-	//     <streamhost-used jid="proxy.domain"/>
-	//   </query>
-	// </iq>
 	
 	NSXMLElement *streamhostUsed = [NSXMLElement elementWithName:@"streamhost-used"];
 	[streamhostUsed addAttributeWithName:@"jid" stringValue:[proxyJID full]];
@@ -483,6 +519,17 @@ static NSMutableArray *proxyCandidates;
  * Sends the activate message to the proxy after the target and initiator are both connected to the proxy.
  * This method automatically updates the state.
 **/
+//  初始方请求激活流
+/*
+ <iq type='set'
+    from='initiator@example.com/foo'
+    to='streamhostproxy.example.net'
+    id='activate'>
+     <query xmlns='http://jabber.org/protocol/bytestreams' sid='mySID'>
+        <activate>target@example.org/bar</activate>
+     </query>
+ </iq>
+ */
 - (void)sendActivate
 {
 	NSAssert(isClient, @"Only the Initiator activates the proxy");
@@ -506,6 +553,18 @@ static NSMutableArray *proxyCandidates;
 /**
  * Sends the error, from target to initiator, notifying the initiator we were unable to connect to any streamhost.
 **/
+
+// 目标方拒绝字节流
+/*
+ <iq type='error'
+    from='target@example.org/bar'
+    to='initiator@example.com/foo'
+    id='initiate'>
+     <error code='406' type='auth'>
+        <not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+     </error>
+ </iq>
+ */
 - (void)sendError
 {
 	NSAssert(!isClient, @"Only the Target sends the error");
@@ -536,7 +595,6 @@ static NSMutableArray *proxyCandidates;
 **/
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)iq
 {
-    NSLog(@"---turnSocket--didReceiveIQ-");
 	// Disco queries (sent to jabber server) use id=discoUUID
 	// P2P queries (sent to other Mojo app) use id=uuid
 	
@@ -855,9 +913,7 @@ static NSMutableArray *proxyCandidates;
 		[self updateDiscoUUID];
 		
 		NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#items"];
-		
 		XMPPIQ *iq = [XMPPIQ iqWithType:@"get" to:proxyCandidateJID elementID:discoUUID child:query];
-		
 		[xmppStream sendElement:iq];
 		
 		[self setupDiscoTimerForDiscoItems];
@@ -877,7 +933,6 @@ static NSMutableArray *proxyCandidates;
 			// We were unable to find a single proxy server from our list
 			
 			XMPPLogVerbose(@"%@: No proxies found", THIS_FILE);
-			
 			[self fail];
 		}
 	}
@@ -893,7 +948,7 @@ static NSMutableArray *proxyCandidates;
 	
 	// Most of the time, the proxy will have a domain name that includes the word "proxy".
 	// We can speed up the process of discovering the proxy by searching for these domains, and querying them first.
-	
+	// 将查询到的代理放在最前面
 	NSUInteger i;
 	for (i = 0; i < [candidateJIDs count]; i++)
 	{
@@ -931,12 +986,10 @@ static NSMutableArray *proxyCandidates;
 	{
 		[self updateDiscoUUID];
 		
+        // 查询是否是字节流代理
 		XMPPJID *candidateJID = [candidateJIDs objectAtIndex:candidateJIDIndex];
-		
 		NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#info"];
-		
 		XMPPIQ *iq = [XMPPIQ iqWithType:@"get" to:candidateJID elementID:discoUUID child:query];
-		
 		[xmppStream sendElement:iq];
 		
 		[self setupDiscoTimerForDiscoInfo];

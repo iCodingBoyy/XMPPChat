@@ -12,6 +12,7 @@
 #import "NewsViewController.h"
 #import "SettingViewController.h"
 #import "LoginAndRegisterView.h"
+#import "YZXMPPManager.h"
 
 @implementation AppDelegate
 
@@ -89,6 +90,7 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
     [DDLog addLogger:[DDTTYLogger sharedInstance]];
+    [YZXMPPManager sharedYZXMPP];
     
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     [self initTabBarController];
@@ -125,7 +127,7 @@
 
 - (void)applicationWillTerminate:(UIApplication *)application
 {
-    
+    [[YZXMPPManager sharedYZXMPP]disconnect];
 }
 
 @end

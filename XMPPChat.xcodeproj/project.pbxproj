@@ -71,14 +71,16 @@
 		6B6BF07518E967F800E05F5E /* user_image@2x.jpeg in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07418E967F800E05F5E /* user_image@2x.jpeg */; };
 		6B6BF07818E982ED00E05F5E /* delete_btn_nor@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07618E982ED00E05F5E /* delete_btn_nor@2x.png */; };
 		6B6BF07918E982ED00E05F5E /* delete_btn_press@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07718E982ED00E05F5E /* delete_btn_press@2x.png */; };
-		6BB7379C18ED045A00F9B90A /* XMPPChat.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 6BB7379A18ED045A00F9B90A /* XMPPChat.xcdatamodeld */; };
-		6BB7379F18ED0C8A00F9B90A /* CoreDataManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB7379E18ED0C8A00F9B90A /* CoreDataManager.m */; };
-		6BB737A218ED105800F9B90A /* YZChatUserObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737A118ED105800F9B90A /* YZChatUserObject.m */; };
-		6BB737A518ED105800F9B90A /* YZChatRoomObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737A418ED105800F9B90A /* YZChatRoomObject.m */; };
-		6BB737AB18ED133A00F9B90A /* YZChatMsgObject.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737AA18ED133A00F9B90A /* YZChatMsgObject.m */; };
+		6B8F8A2918F4DE7600DBC675 /* XMPPFileTransfer.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2818F4DE7600DBC675 /* XMPPFileTransfer.m */; };
+		6B8F8A3018F52FE200DBC675 /* MKEntryPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2C18F52FE200DBC675 /* MKEntryPanel.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
+		6B8F8A3118F52FE200DBC675 /* MKEntryPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */; };
+		6B8F8A3218F52FE200DBC675 /* TopBar.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2E18F52FE200DBC675 /* TopBar.png */; };
+		6B8F8A3318F52FE200DBC675 /* TopBar@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2F18F52FE200DBC675 /* TopBar@2x.png */; };
 		6BB737AE18ED188C00F9B90A /* NSObject+PropertyListing.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */; };
 		6BB737B418ED50CF00F9B90A /* YZTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737B318ED50CF00F9B90A /* YZTextField.m */; };
 		6BDE825A18E51D7B00356E41 /* YZXMPPManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BDE825918E51D7B00356E41 /* YZXMPPManager.m */; };
+		6BECF9CE18F6803900A717C9 /* YZRecentChatListCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BECF9CD18F6803900A717C9 /* YZRecentChatListCell.m */; };
+		6BF6C1AE18FCDE4F00B31984 /* XMPPFileSKConnect.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BF6C1AD18FCDE4F00B31984 /* XMPPFileSKConnect.m */; };
 		6BFEB18A18EA70EC00D14B17 /* nav_bg_image_ios7@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6BFEB18818EA70EC00D14B17 /* nav_bg_image_ios7@2x.png */; };
 		6BFEB18B18EA70EC00D14B17 /* nav_bg_image@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6BFEB18918EA70EC00D14B17 /* nav_bg_image@2x.png */; };
 		6BFEB18E18EA789E00D14B17 /* account_add@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6BFEB18D18EA789E00D14B17 /* account_add@2x.png */; };
@@ -183,21 +185,23 @@
 		6B6BF07418E967F800E05F5E /* user_image@2x.jpeg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "user_image@2x.jpeg"; sourceTree = "<group>"; };
 		6B6BF07618E982ED00E05F5E /* delete_btn_nor@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "delete_btn_nor@2x.png"; sourceTree = "<group>"; };
 		6B6BF07718E982ED00E05F5E /* delete_btn_press@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "delete_btn_press@2x.png"; sourceTree = "<group>"; };
-		6BB7379B18ED045A00F9B90A /* XMPPChat.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = XMPPChat.xcdatamodel; sourceTree = "<group>"; };
-		6BB7379D18ED0C8A00F9B90A /* CoreDataManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoreDataManager.h; sourceTree = "<group>"; };
-		6BB7379E18ED0C8A00F9B90A /* CoreDataManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = CoreDataManager.m; sourceTree = "<group>"; };
-		6BB737A018ED105800F9B90A /* YZChatUserObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatUserObject.h; sourceTree = "<group>"; };
-		6BB737A118ED105800F9B90A /* YZChatUserObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatUserObject.m; sourceTree = "<group>"; };
-		6BB737A318ED105800F9B90A /* YZChatRoomObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatRoomObject.h; sourceTree = "<group>"; };
-		6BB737A418ED105800F9B90A /* YZChatRoomObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatRoomObject.m; sourceTree = "<group>"; };
-		6BB737A918ED133A00F9B90A /* YZChatMsgObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatMsgObject.h; sourceTree = "<group>"; };
-		6BB737AA18ED133A00F9B90A /* YZChatMsgObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatMsgObject.m; sourceTree = "<group>"; };
+		6B8F8A2718F4DE7600DBC675 /* XMPPFileTransfer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPFileTransfer.h; sourceTree = "<group>"; };
+		6B8F8A2818F4DE7600DBC675 /* XMPPFileTransfer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPFileTransfer.m; sourceTree = "<group>"; };
+		6B8F8A2B18F52FE200DBC675 /* MKEntryPanel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MKEntryPanel.h; sourceTree = "<group>"; };
+		6B8F8A2C18F52FE200DBC675 /* MKEntryPanel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MKEntryPanel.m; sourceTree = "<group>"; };
+		6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MKEntryPanel.xib; sourceTree = "<group>"; };
+		6B8F8A2E18F52FE200DBC675 /* TopBar.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = TopBar.png; sourceTree = "<group>"; };
+		6B8F8A2F18F52FE200DBC675 /* TopBar@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "TopBar@2x.png"; sourceTree = "<group>"; };
 		6BB737AC18ED188C00F9B90A /* NSObject+PropertyListing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSObject+PropertyListing.h"; sourceTree = "<group>"; };
 		6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSObject+PropertyListing.m"; sourceTree = "<group>"; };
 		6BB737B218ED50CF00F9B90A /* YZTextField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZTextField.h; sourceTree = "<group>"; };
 		6BB737B318ED50CF00F9B90A /* YZTextField.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZTextField.m; sourceTree = "<group>"; };
 		6BDE825818E51D7B00356E41 /* YZXMPPManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZXMPPManager.h; sourceTree = "<group>"; };
 		6BDE825918E51D7B00356E41 /* YZXMPPManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZXMPPManager.m; sourceTree = "<group>"; };
+		6BECF9CC18F6803900A717C9 /* YZRecentChatListCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZRecentChatListCell.h; sourceTree = "<group>"; };
+		6BECF9CD18F6803900A717C9 /* YZRecentChatListCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZRecentChatListCell.m; sourceTree = "<group>"; };
+		6BF6C1AC18FCDE4F00B31984 /* XMPPFileSKConnect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPFileSKConnect.h; sourceTree = "<group>"; };
+		6BF6C1AD18FCDE4F00B31984 /* XMPPFileSKConnect.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPFileSKConnect.m; sourceTree = "<group>"; };
 		6BFEB18818EA70EC00D14B17 /* nav_bg_image_ios7@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "nav_bg_image_ios7@2x.png"; sourceTree = "<group>"; };
 		6BFEB18918EA70EC00D14B17 /* nav_bg_image@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "nav_bg_image@2x.png"; sourceTree = "<group>"; };
 		6BFEB18D18EA789E00D14B17 /* account_add@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "account_add@2x.png"; sourceTree = "<group>"; };
@@ -379,6 +383,7 @@
 		6B6BF03518E9444700E05F5E /* 联系人 */ = {
 			isa = PBXGroup;
 			children = (
+				6B8F8A2A18F52FE200DBC675 /* MKEntryPanel */,
 				6B6BF03818E9445E00E05F5E /* RosterViewController.h */,
 				6B6BF03918E9445E00E05F5E /* RosterViewController.m */,
 			);
@@ -390,6 +395,8 @@
 			children = (
 				6B6BF03B18E944B000E05F5E /* RecentMsgViewController.h */,
 				6B6BF03C18E944B000E05F5E /* RecentMsgViewController.m */,
+				6BECF9CC18F6803900A717C9 /* YZRecentChatListCell.h */,
+				6BECF9CD18F6803900A717C9 /* YZRecentChatListCell.m */,
 			);
 			path = "聊天记录";
 			sourceTree = "<group>";
@@ -439,20 +446,16 @@
 			path = "Depend ";
 			sourceTree = "<group>";
 		};
-		6BB7379918ED043600F9B90A /* coreData */ = {
+		6B8F8A2A18F52FE200DBC675 /* MKEntryPanel */ = {
 			isa = PBXGroup;
 			children = (
-				6BB7379D18ED0C8A00F9B90A /* CoreDataManager.h */,
-				6BB7379E18ED0C8A00F9B90A /* CoreDataManager.m */,
-				6BB7379A18ED045A00F9B90A /* XMPPChat.xcdatamodeld */,
-				6BB737A918ED133A00F9B90A /* YZChatMsgObject.h */,
-				6BB737AA18ED133A00F9B90A /* YZChatMsgObject.m */,
-				6BB737A318ED105800F9B90A /* YZChatRoomObject.h */,
-				6BB737A418ED105800F9B90A /* YZChatRoomObject.m */,
-				6BB737A018ED105800F9B90A /* YZChatUserObject.h */,
-				6BB737A118ED105800F9B90A /* YZChatUserObject.m */,
+				6B8F8A2B18F52FE200DBC675 /* MKEntryPanel.h */,
+				6B8F8A2C18F52FE200DBC675 /* MKEntryPanel.m */,
+				6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */,
+				6B8F8A2E18F52FE200DBC675 /* TopBar.png */,
+				6B8F8A2F18F52FE200DBC675 /* TopBar@2x.png */,
 			);
-			path = coreData;
+			path = MKEntryPanel;
 			sourceTree = "<group>";
 		};
 		6BDE824D18E5185900356E41 /* 登陆:注册 */ = {
@@ -471,6 +474,10 @@
 			children = (
 				6BDE825818E51D7B00356E41 /* YZXMPPManager.h */,
 				6BDE825918E51D7B00356E41 /* YZXMPPManager.m */,
+				6B8F8A2718F4DE7600DBC675 /* XMPPFileTransfer.h */,
+				6B8F8A2818F4DE7600DBC675 /* XMPPFileTransfer.m */,
+				6BF6C1AC18FCDE4F00B31984 /* XMPPFileSKConnect.h */,
+				6BF6C1AD18FCDE4F00B31984 /* XMPPFileSKConnect.m */,
 				6BB737AC18ED188C00F9B90A /* NSObject+PropertyListing.h */,
 				6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */,
 			);
@@ -480,7 +487,6 @@
 		6BFEB19118EA97E800D14B17 /* 聊天 */ = {
 			isa = PBXGroup;
 			children = (
-				6BB7379918ED043600F9B90A /* coreData */,
 				6B4ED21318EC125E00E69BD1 /* ToolBarView */,
 				6BFEB19218EA97FC00D14B17 /* YZChatViewController.h */,
 				6BFEB19318EA97FC00D14B17 /* YZChatViewController.m */,
@@ -579,6 +585,7 @@
 				6B4ED1F318EC05F700E69BD1 /* chat_bottom_keyboard_nor.png in Resources */,
 				6B6BF06C18E956D100E05F5E /* login_btn_blue_nor@2x.png in Resources */,
 				6BFEB18A18EA70EC00D14B17 /* nav_bg_image_ios7@2x.png in Resources */,
+				6B8F8A3318F52FE200DBC675 /* TopBar@2x.png in Resources */,
 				6BFEB19018EA7E6F00D14B17 /* avatar_default@2x.png in Resources */,
 				6B4ED1F718EC05F700E69BD1 /* chat_bottom_textfield@2x.png in Resources */,
 				6B4ED20F18EC060100E69BD1 /* sharemore_videovoip@2x.png in Resources */,
@@ -596,6 +603,7 @@
 				6B4ED1F518EC05F700E69BD1 /* chat_bottom_smile_nor.png in Resources */,
 				6B4ED1F618EC05F700E69BD1 /* chat_bottom_smile_press.png in Resources */,
 				6B4ED1FB18EC05F700E69BD1 /* chat_bottom_voice_press.png in Resources */,
+				6B8F8A3218F52FE200DBC675 /* TopBar.png in Resources */,
 				6BFEB18E18EA789E00D14B17 /* account_add@2x.png in Resources */,
 				6B6BF05B18E94C0900E05F5E /* tab_qzone@2x.png in Resources */,
 				6B6BF06D18E956D100E05F5E /* login_btn_blue_press@2x.png in Resources */,
@@ -607,6 +615,7 @@
 				6B4ED1FE18EC05F700E69BD1 /* chatfrom_bg_normal.png in Resources */,
 				6B4ED20118EC05F700E69BD1 /* toolbar_bottom_bar@2x.png in Resources */,
 				6B6BF07518E967F800E05F5E /* user_image@2x.jpeg in Resources */,
+				6B8F8A3118F52FE200DBC675 /* MKEntryPanel.xib in Resources */,
 				6B4ED20B18EC060100E69BD1 /* sharemore_friendcard@2x.png in Resources */,
 				6B13C39118E51667002E3AF0 /* Images.xcassets in Resources */,
 				6B4ED1FF18EC05F700E69BD1 /* chatto_bg_focused.png in Resources */,
@@ -674,26 +683,25 @@
 				6B6BF07318E964DA00E05F5E /* LoginAndRegisterView.m in Sources */,
 				6BB737AE18ED188C00F9B90A /* NSObject+PropertyListing.m in Sources */,
 				6B4ED22B18EC130700E69BD1 /* YZChatContactCell.m in Sources */,
-				6BB737A218ED105800F9B90A /* YZChatUserObject.m in Sources */,
-				6BB737AB18ED133A00F9B90A /* YZChatMsgObject.m in Sources */,
+				6BF6C1AE18FCDE4F00B31984 /* XMPPFileSKConnect.m in Sources */,
 				6B4ED22E18EC131D00E69BD1 /* YZChatLocationCell.m in Sources */,
 				6B6BF06418E9513F00E05F5E /* TPKeyboardAvoidingScrollView.m in Sources */,
 				6B13C38F18E51667002E3AF0 /* AppDelegate.m in Sources */,
+				6BECF9CE18F6803900A717C9 /* YZRecentChatListCell.m in Sources */,
 				6B4ED22818EC12F200E69BD1 /* YZChatVideoCell.m in Sources */,
 				6BFEB19418EA97FC00D14B17 /* YZChatViewController.m in Sources */,
 				6B6BF03A18E9445E00E05F5E /* RosterViewController.m in Sources */,
+				6B8F8A2918F4DE7600DBC675 /* XMPPFileTransfer.m in Sources */,
 				6B13C38B18E51667002E3AF0 /* main.m in Sources */,
 				6B6BF03D18E944B000E05F5E /* RecentMsgViewController.m in Sources */,
 				6B6BF04318E9450500E05F5E /* NewsViewController.m in Sources */,
 				6B4ED21C18EC127100E69BD1 /* YZChatToolBoxView.m in Sources */,
-				6BB7379C18ED045A00F9B90A /* XMPPChat.xcdatamodeld in Sources */,
-				6BB737A518ED105800F9B90A /* YZChatRoomObject.m in Sources */,
-				6BB7379F18ED0C8A00F9B90A /* CoreDataManager.m in Sources */,
 				6B4ED21A18EC127100E69BD1 /* YZChatFaceBoardView.m in Sources */,
 				6B4ED21B18EC127100E69BD1 /* YZChatToolBarView.m in Sources */,
 				6B4ED22518EC12DC00E69BD1 /* YZChatPictureCell.m in Sources */,
 				6B6BF06518E9513F00E05F5E /* TPKeyboardAvoidingTableView.m in Sources */,
 				6B6BF04018E944BD00E05F5E /* SettingViewController.m in Sources */,
+				6B8F8A3018F52FE200DBC675 /* MKEntryPanel.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -912,19 +920,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCVersionGroup section */
-		6BB7379A18ED045A00F9B90A /* XMPPChat.xcdatamodeld */ = {
-			isa = XCVersionGroup;
-			children = (
-				6BB7379B18ED045A00F9B90A /* XMPPChat.xcdatamodel */,
-			);
-			currentVersion = 6BB7379B18ED045A00F9B90A /* XMPPChat.xcdatamodel */;
-			path = XMPPChat.xcdatamodeld;
-			sourceTree = "<group>";
-			versionGroupType = wrapper.xcdatamodel;
-		};
-/* End XCVersionGroup section */
 	};
 	rootObject = 6B13C37318E51667002E3AF0 /* Project object */;
 }

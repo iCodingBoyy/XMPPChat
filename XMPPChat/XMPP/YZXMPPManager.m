@@ -9,12 +9,16 @@
 #import "YZXMPPManager.h"
 #import <objc/runtime.h>
 
+
 #define KXMPPLoginNAME @"KXMPPLoginNAME"
 #define KXMPPLOGINPWD @"KXMPPLOGINPWD"
 
 
-@interface YZXMPPManager() <XMPPRosterDelegate,XMPPStreamDelegate,XMPPReconnectDelegate>
-
+@interface YZXMPPManager() <XMPPRosterDelegate,XMPPMessageArchivingStorage>
+{
+    BOOL allowSelfSignedCertificates;
+	BOOL allowSSLHostNameMismatch;
+}
 @property (nonatomic, strong) NSString *passWord;
 @property (nonatomic, assign) BOOL isXmppConnected;
 @property (nonatomic,   copy) AuthComplete authCompleteBlock;
@@ -56,21 +60,17 @@
 #endif
     _xmppStream.hostName = KXMPPHostName;
     _xmppStream.hostPort = KXMPPHostPort;
-    [_xmppStream addDelegate:self delegateQueue:dispatch_get_main_queue()];
     
     // 自动重连
     _xmppReconnect = [[XMPPReconnect alloc]init];
-    [_xmppReconnect activate:_xmppStream];
-    [_xmppReconnect addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    _xmppReconnect.autoReconnect = YES;
     
     // 花名册
-    _xmppRosterStorage = [[XMPPRosterCoreDataStorage alloc]init];
+    _xmppRosterStorage = [XMPPRosterCoreDataStorage sharedInstance];
     _xmppRoster = [[XMPPRoster alloc]initWithRosterStorage:_xmppRosterStorage];
     _xmppRoster.autoFetchRoster = YES;
     _xmppRoster.autoAcceptKnownPresenceSubscriptionRequests = YES;
-    _xmppRoster.autoClearAllUsersAndResources = NO;
-    [_xmppRoster activate:_xmppStream];
-    [_xmppRoster addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    
     
     // vCard
     _xmppvCardStorage = [XMPPvCardCoreDataStorage sharedInstance];
@@ -80,24 +80,55 @@
     // cap
     _xmppCapabilitiesStorage = [XMPPCapabilitiesCoreDataStorage sharedInstance];
     _xmppCapabilities = [[XMPPCapabilities alloc] initWithCapabilitiesStorage:_xmppCapabilitiesStorage];
-    
     _xmppCapabilities.autoFetchHashedCapabilities = YES;
     _xmppCapabilities.autoFetchNonHashedCapabilities = NO;
+//
+//    // message
+    _xmppMessageArchivingCoreDataStorage = [XMPPMessageArchivingCoreDataStorage sharedInstance];
+    _xmppMessageArchiving = [[XMPPMessageArchiving alloc]initWithMessageArchivingStorage:_xmppMessageArchivingCoreDataStorage];
+    [_xmppMessageArchiving setClientSideMessageArchivingOnly:YES];
+    
+    
+    [_xmppStream addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_xmppRoster addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_xmppCapabilities addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_xmppMessageArchiving addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    
+    _xmppFileTransfer = [[XMPPFileTransfer alloc]init];
+    [_xmppFileTransfer addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_xmppFileTransfer activate:_xmppStream];
+    
+//    XMPPMessageDeliveryReceipts * deliveryReceiptsModule = [[XMPPMessageDeliveryReceipts alloc] init];
+//    deliveryReceiptsModule.autoSendMessageDeliveryRequests = YES;
+//    [deliveryReceiptsModule activate:_xmppStream];
+
+    
+    // activate
+    [_xmppReconnect         activate:_xmppStream];
+    [_xmppRoster            activate:_xmppStream];
     [_xmppvCardTempModule   activate:_xmppStream];
 	[_xmppvCardAvatarModule activate:_xmppStream];
 	[_xmppCapabilities      activate:_xmppStream];
+    [_xmppMessageArchiving  activate:_xmppStream];
+    
+    allowSelfSignedCertificates = YES;
+	allowSSLHostNameMismatch = YES;
 }
+
 
 - (void)releaseXMPPStream
 {
     [_xmppStream removeDelegate:self];
     [_xmppRoster removeDelegate:self];
+    [_xmppMessageArchiving removeDelegate:self];
     
     [_xmppReconnect deactivate];
     [_xmppRoster deactivate];
     [_xmppvCardTempModule deactivate];
     [_xmppvCardAvatarModule deactivate];
     [_xmppCapabilities deactivate];
+    [_xmppMessageArchiving deactivate];
+    [_xmppFileTransfer deactivate];
     
     [_xmppStream disconnect];
     
@@ -110,6 +141,8 @@
     _xmppvCardAvatarModule = nil;
     _xmppCapabilities = nil;
     _xmppCapabilitiesStorage = nil;
+    _xmppMessageArchiving = nil;
+    _xmppFileTransfer = nil;
 }
 
 
@@ -138,7 +171,7 @@
 {
     _authCompleteBlock = completeBlock;
     _authErrorBlock = errorBlock;
-     _xmppOperation = XMPPLoginServerOp;
+    _xmppOperation = XMPPLoginServerOp;
     
     if (userName == nil || passWord == nil)
     {
@@ -230,8 +263,7 @@
     [[NSUserDefaults standardUserDefaults]setObject:userName forKey:KXMPPLoginNAME];
     [[NSUserDefaults standardUserDefaults]setObject:passWord forKey:KXMPPLOGINPWD];
     
-    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/%@",userName,KXMPPHostName,KXMPPResource];
-    XMPPJID *xmppJID = [XMPPJID jidWithString:xmppJIDString];
+    XMPPJID *xmppJID = [XMPPJID jidWithUser:userName domain:KXMPPHostName resource:KXMPPResource];
     [_xmppStream setMyJID:xmppJID];
     _passWord = passWord;
     
@@ -256,7 +288,9 @@
 
 - (void)xmppStreamDidRegister:(XMPPStream *)sender
 {
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
+    NSLog(@"---Register---%@",sender.myJID.user);
+    [_xmppRoster setNickname:sender.myJID.user forUser:sender.myJID];
+    
     if (_authCompleteBlock)
     {
         _authCompleteBlock();
@@ -272,9 +306,6 @@
     }
 }
 
-//NSString *errorString = @"参数输入不完整.";
-//NSDictionary *userInfoDic = [NSDictionary dictionaryWithObject:errorString forKey: NSLocalizedDescriptionKey];
-//NSError *error = [NSError errorWithDomain:KFFHttpRequestErrorDomain code:FFHttpRequestParamsError userInfo:userInfoDic] ;
 
 #pragma mark -
 #pragma mark connect/disconnet
@@ -299,8 +330,9 @@
         return NO;
     }
     
-    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/%@",loginName,KXMPPHostName,KXMPPResource];
-    XMPPJID *xmppJID = [XMPPJID jidWithString:xmppJIDString];
+//    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/%@",loginName,KXMPPHostName,KXMPPResource];
+//    XMPPJID *xmppJID = [XMPPJID jidWithString:xmppJIDString];
+    XMPPJID *xmppJID = [XMPPJID jidWithUser:loginName domain:KXMPPHostName resource:KXMPPResource];
     [_xmppStream setMyJID:xmppJID];
     
     NSError *error = nil;
@@ -316,19 +348,64 @@
 {
     [self gooffline];
     [_xmppStream disconnect];
+    [_xmppvCardTempModule removeDelegate:self];
 }
 
-- (void)xmppReconnect:(XMPPReconnect *)sender didDetectAccidentalDisconnect:(SCNetworkConnectionFlags)connectionFlags
+- (NSString *)xmppStream:(XMPPStream *)sender alternativeResourceForConflictingResource:(NSString *)conflictingResource
 {
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
+    return KXMPPResource;
 }
 
-- (BOOL)xmppReconnect:(XMPPReconnect *)sender shouldAttemptAutoReconnect:(SCNetworkConnectionFlags)connectionFlags
+
+- (void)xmppStream:(XMPPStream *)sender willSecureWithSettings:(NSMutableDictionary *)settings
 {
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-    return YES;
+	DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
+	if (allowSelfSignedCertificates)
+	{
+		[settings setObject:[NSNumber numberWithBool:YES] forKey:(NSString *)kCFStreamSSLAllowsAnyRoot];
+	}
+	
+	if (allowSSLHostNameMismatch)
+	{
+		[settings setObject:[NSNull null] forKey:(NSString *)kCFStreamSSLPeerName];
+	}
+	else
+	{
+		NSString *expectedCertName = nil;
+		NSString *serverDomain = _xmppStream.hostName;
+		NSString *virtualDomain = [_xmppStream.myJID domain];
+		
+		if ([serverDomain isEqualToString:@"talk.google.com"])
+		{
+			if ([virtualDomain isEqualToString:@"gmail.com"])
+			{
+				expectedCertName = virtualDomain;
+			}
+			else
+			{
+				expectedCertName = serverDomain;
+			}
+		}
+		else if (serverDomain == nil)
+		{
+			expectedCertName = virtualDomain;
+		}
+		else
+		{
+			expectedCertName = serverDomain;
+		}
+		
+		if (expectedCertName)
+		{
+			[settings setObject:expectedCertName forKey:(NSString *)kCFStreamSSLPeerName];
+		}
+	}
 }
 
+- (void)xmppStreamDidSecure:(XMPPStream *)sender
+{
+	DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
+}
 
 - (void)xmppStreamWillConnect:(XMPPStream *)sender
 {
@@ -348,7 +425,6 @@
         [_xmppStream authenticateWithPassword:_passWord error:&error];
         if ( error )
         {
-            NSLog(@"--%s---not-auth-----%@",__FUNCTION__,error);
             if (_authErrorBlock)
             {
                 _authErrorBlock(XMPPAuthenticateServerError);
@@ -363,7 +439,6 @@
         [_xmppStream registerWithPassword:_passWord error:&error];
         if ( error )
         {
-            NSLog(@"--%s----register-----%@",__FUNCTION__,error);
             if (_authErrorBlock)
             {
                 _authErrorBlock(XMPPRegisterServerError);
@@ -426,11 +501,12 @@
     XMPPJID *myJID = _xmppStream.myJID;
     [iqEle addAttributeWithName:@"from" stringValue:myJID.description];
     [iqEle addAttributeWithName:@"to" stringValue:myJID.domain];
-    [iqEle addAttributeWithName:@"id" stringValue:@"123456789"];
+    [iqEle addAttributeWithName:@"id" stringValue:[_xmppStream generateUUID]];
     [iqEle addAttributeWithName:@"type" stringValue:@"get"];
     [iqEle addChild:queryEle];
     [_xmppStream sendElement:iqEle];
 }
+
 
 - (void)fetchRoster
 {
@@ -440,134 +516,41 @@
     }
 }
 
-- (void)fetchUserWithXMPPJID:(NSString*)searchField
+- (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)iq
 {
-    NSString *userBare1  = [[_xmppStream myJID] bare];
-    
-    NSXMLElement *query = [NSXMLElement elementWithName:@"query"];
-    [query addAttributeWithName:@"xmlns" stringValue:@"jabber:iq:search"];
-    
-    
-    NSXMLElement *x = [NSXMLElement elementWithName:@"x" xmlns:@"jabber:x:data"];
-    [x addAttributeWithName:@"type" stringValue:@"submit"];
-    
-    NSXMLElement *formType = [NSXMLElement elementWithName:@"field"];
-    [formType addAttributeWithName:@"type" stringValue:@"hidden"];
-    [formType addAttributeWithName:@"var" stringValue:@"FORM_TYPE"];
-    [formType addChild:[NSXMLElement elementWithName:@"value" stringValue:@"jabber:iq:search" ]];
-    
-    NSXMLElement *userName = [NSXMLElement elementWithName:@"field"];
-    [userName addAttributeWithName:@"var" stringValue:@"Username"];
-    [userName addChild:[NSXMLElement elementWithName:@"value" stringValue:@"1" ]];
-    
-    NSXMLElement *name = [NSXMLElement elementWithName:@"field"];
-    [name addAttributeWithName:@"var" stringValue:@"Name"];
-    [name addChild:[NSXMLElement elementWithName:@"value" stringValue:@"1"]];
-    
-    NSXMLElement *email = [NSXMLElement elementWithName:@"field"];
-    [email addAttributeWithName:@"var" stringValue:@"Email"];
-    [email addChild:[NSXMLElement elementWithName:@"value" stringValue:@"1"]];
-    
-    NSXMLElement *search = [NSXMLElement elementWithName:@"field"];
-    [search addAttributeWithName:@"var" stringValue:@"search"];
-    [search addChild:[NSXMLElement elementWithName:@"value" stringValue:searchField]];
-    
-    [x addChild:formType];
-    [x addChild:userName];
-    //[x addChild:name];
-    //[x addChild:email];
-    [x addChild:search];
-    [query addChild:x];
-    
-    
-    NSXMLElement *iq = [NSXMLElement elementWithName:@"iq"];
-    [iq addAttributeWithName:@"type" stringValue:@"set"];
-    [iq addAttributeWithName:@"id" stringValue:@"searchByUserName"];
-    [iq addAttributeWithName:@"to" stringValue:[NSString stringWithFormat:@"search.%@",_xmppStream.hostName ]];
-    [iq addAttributeWithName:@"from" stringValue:userBare1];
-    [iq addChild:query];
-    [_xmppStream sendElement:iq];
+    if ( [@"result" isEqualToString:iq.type] )
+    {
+        NSXMLElement *query = iq.childElement;
+        if ( [@"query" isEqualToString:query.name] )
+        {
+            NSArray *items = [query children];
+            for (NSXMLElement *item in items)
+            {
+                NSString *jid = [item attributeStringValueForName:@"jid"];
+                if (jid)
+                {
+                    XMPPJID *xmppJID = [XMPPJID jidWithString:jid];
+                    NSLog(@"----xmppJID---%@",xmppJID.full);
+                    if (_delegate && [_delegate respondsToSelector:@selector(YZXmppMgr:didReceiveJID:)])
+                    {
+                        [_delegate YZXmppMgr:self didReceiveJID:xmppJID];
+                    }
+                }
+            }
+        }
+    }
+    return YES;
 }
+#define PresenceServerURL @"http://www.savvy-tech.net:9090/plugins/presence/status"
 
-
-//- (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)iq
-//{
-//    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-//    
-//    if ([@"result" isEqualToString:iq.type])
-//    {
-//        NSXMLElement *query = iq.childElement;
-//        if ([@"query" isEqualToString:query.name])
-//        {
-//            NSArray *items = [query children];
-//            for (NSXMLElement *item in items)
-//            {
-//                NSString *jid = [item attributeStringValueForName:@"jid"];
-//                XMPPJID *xmppJID = [XMPPJID jidWithString:jid];
-//                NSLog(@"-%s--%@",__FUNCTION__,xmppJID);
-//            }
-//        }
-//    }
-//    
-//    if ([TURNSocket isNewStartTURNRequest:iq])
-//    {
-//        [TURNSocket initialize];
-//        TURNSocket *turnSocket = [[TURNSocket alloc]initWithStream:_xmppStream incomingTURNRequest:iq];
-//        [turnSocket startWithDelegate:self delegateQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)];
-//        NSLog(@"---xmppFile-----");
-//    }
-//    return YES;
-//}
-
-- (void)sendFile:(NSData*)data toUser:(NSString*)xmppUser
+- (BOOL)sendFile:(NSData *)data toUser:(NSString *)xmppUser
 {
-    _sendData = data;
-    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/%@",xmppUser,KXMPPHostName,KXMPPResource];
-    XMPPJID *jid = [XMPPJID jidWithString:xmppJIDString];
-    NSLog(@"------domian---%@",_xmppStream.myJID.domain);
-    [TURNSocket setProxyCandidates:[NSArray arrayWithObjects:KXMPPHostName, nil]];
-    
-    TURNSocket *turnSocket = [[TURNSocket alloc]initWithStream:_xmppStream toJID:jid];
-    [turnSocket startWithDelegate:self delegateQueue:dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0)];
+    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/Server",xmppUser,KXMPPHostName];
+    NSString *fileName = [NSString stringWithFormat:@"photo%@.png",[_xmppStream generateUUID]];
+    XMPPJID *senderJID = [XMPPJID jidWithString:xmppJIDString];
+    [_xmppFileTransfer initiateFileTransferTo:senderJID fileName:fileName fileData:data];
+    return YES;
 }
-
-- (void)turnSocket:(TURNSocket *)sender didSucceed:(GCDAsyncSocket *)socket
-{
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-//    socket.delegate = self;
-//    [socket readDataWithTimeout:30 tag:1005];
-    socket.delegate = self;
-    [socket writeData:_sendData withTimeout:30 tag:1003];
-    [socket disconnectAfterWriting];
-    
-}
-
-- (void)socket:(GCDAsyncSocket *)sock didWriteDataWithTag:(long)tag{
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-}
-
-- (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
-{
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-    
-}
-
-- (void)turnSocketDidFail:(TURNSocket *)sender
-{
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-    NSLog(@"------%@---",[TURNSocket proxyCandidates]);
-}
-
-- (void)xmppStream:(XMPPStream *)sender didReceiveError:(NSXMLElement *)error
-{
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-}
-
-#pragma mark -
-#pragma mark XMPPStream Delegate
-
-
-
 
 #pragma mark -
 #pragma mark 好友管理
@@ -581,7 +564,7 @@
 
 - (void)xmppAddFriendsSubscribe:(NSString*)name
 {
-    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@",name,KXMPPHostName];
+    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/%@",name,KXMPPHostName,KXMPPResource];
     XMPPJID *jid = [XMPPJID jidWithString:xmppJIDString];
     [_xmppRoster addUser:jid withNickname:name];
 }
@@ -597,76 +580,83 @@
 - (void)xmppRoster:(XMPPRoster *)sender didReceivePresenceSubscriptionRequest:(XMPPPresence *)presence
 {
     DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-
-    XMPPJID *jid = [XMPPJID jidWithString:[[presence from] user]]; 
-    [_xmppRoster acceptPresenceSubscriptionRequestFrom:jid andAddToRoster:YES];
-    
-    XMPPUserCoreDataStorageObject *user = [_xmppRosterStorage userForJID:[presence from]
-	                                                         xmppStream:_xmppStream
-	                                               managedObjectContext:[self mgdObjContext_roster]];
-	
-	NSString *body = nil;
-	
-	if (![user.displayName isEqualToString:presence.fromStr])
-	{
-		body = [NSString stringWithFormat:@"Buddy request from %@ <%@>", user.displayName, presence.fromStr];
-	}
-	else
-	{
-		body = [NSString stringWithFormat:@"Buddy request from %@", user.displayName];
-	}
-	
-	
-	if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive)
-	{
-		UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:user.displayName
-		                                                    message:body
-		                                                   delegate:nil
-		                                          cancelButtonTitle:@"Not implemented"
-		                                          otherButtonTitles:nil];
-		[alertView show];
-	}
-	else
-	{
-		UILocalNotification *localNotification = [[UILocalNotification alloc] init];
-		localNotification.alertAction = @"Not implemented";
-		localNotification.alertBody = body;
-		
-		[[UIApplication sharedApplication] presentLocalNotificationNow:localNotification];
-	}
-
+//
+    if (presence.from)
+    {
+        [_xmppRoster acceptPresenceSubscriptionRequestFrom:presence.from andAddToRoster:YES];
+    }
+//
+//    XMPPUserCoreDataStorageObject *user = [_xmppRosterStorage userForJID:[presence from]
+//	                                                         xmppStream:_xmppStream
+//	                                               managedObjectContext:[self mgdObjContext_roster]];
+//	
+//	NSString *body = nil;
+//	
+//	if (![user.displayName isEqualToString:presence.fromStr])
+//	{
+//		body = [NSString stringWithFormat:@"Buddy request from %@ <%@>", user.displayName, presence.fromStr];
+//	}
+//	else
+//	{
+//		body = [NSString stringWithFormat:@"Buddy request from %@", user.displayName];
+//	}
+//	
+//	
+//	if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive)
+//	{
+//		UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:user.displayName
+//		                                                    message:body
+//		                                                   delegate:nil
+//		                                          cancelButtonTitle:@"Not implemented"
+//		                                          otherButtonTitles:nil];
+//		[alertView show];
+//	}
+//	else
+//	{
+//		UILocalNotification *localNotification = [[UILocalNotification alloc] init];
+//		localNotification.alertAction = @"Not implemented";
+//		localNotification.alertBody = body;
+//		
+//		[[UIApplication sharedApplication] presentLocalNotificationNow:localNotification];
+//	}
+//
 }
 
 - (void)xmppRoster:(XMPPRoster *)sender didReceiveRosterItem:(DDXMLElement *)item
 {
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-    
-    NSLog(@"----item--%@",item);
+    NSLog(@"---%s-----%@",__FUNCTION__,item.description);
 }
 
 
 
 - (void)xmppStream:(XMPPStream *)sender didReceivePresence:(XMPPPresence *)presence
 {
-    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
+    NSLog(@"----presence---%@",presence.type);
     
     if ( ![presence.from.user isEqualToString:sender.myJID.user])
     {
         if ([presence.type isEqualToString:@"available"])
         {
-            
+            if (_delegate && [_delegate respondsToSelector:@selector(YZXmppMgr:newBuddyOnline:)])
+            {
+                [_delegate YZXmppMgr:self newBuddyOnline:presence.from.user];
+            }
         }
         else if ([presence.type isEqualToString:@"unavailable"])
         {
-            
+            if (_delegate && [_delegate respondsToSelector:@selector(YZXmppMgr:buddyWentOffline:)])
+            {
+                [_delegate YZXmppMgr:self buddyWentOffline:presence.from.user];
+            }
         }
     }
     
-    if ([[presence type] isEqualToString:@"subscribed"])
+    if ([presence.type isEqualToString:@"subscribed"])
     {
-        [_xmppRoster acceptPresenceSubscriptionRequestFrom:[presence from] andAddToRoster:YES];
+        [_xmppRoster acceptPresenceSubscriptionRequestFrom:presence.from andAddToRoster:YES];
     }
 }
+
 
 #pragma mark -xmpp通信
 
@@ -684,26 +674,31 @@
     [self.xmppStream sendElement:chatMessage];
 }
 
-- (void)xmppStream:(XMPPStream *)sender didReceiveMessage:(XMPPMessage *)message
+- (void)xmppStream:(XMPPStream *)sender didSendMessage:(XMPPMessage *)message
+{
+    DEBUG_METHOD(@"---%s---%@",__FUNCTION__,message.description);
+}
+
+- (void)xmppStream:(XMPPStream *)sender didFailToSendMessage:(XMPPMessage *)message error:(NSError *)error
 {
     DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
+}
+
+- (void)xmppStream:(XMPPStream *)sender didReceiveMessage:(XMPPMessage *)message
+{
+    DEBUG_METHOD(@"---%s---%@",__FUNCTION__,message.description);
     if ([message isChatMessageWithBody])
 	{
-//		XMPPUserCoreDataStorageObject *user = [_xmppRosterStorage userForJID:[message from]
-//		                                                         xmppStream:_xmppStream
-//		                                               managedObjectContext:[self mgdObjContext_roster]];
+		XMPPUserCoreDataStorageObject *user = [_xmppRosterStorage userForJID:[message from]
+		                                                         xmppStream:_xmppStream
+		                                               managedObjectContext:[self mgdObjContext_roster]];
 		
 		NSString *body = [[message elementForName:@"body"] stringValue];
-		NSString *displayName = message.from.user;
+		NSString *displayName = user.displayName;
         
 		if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive)
 		{
-			UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:displayName
-                                                                message:body
-                                                               delegate:nil
-                                                      cancelButtonTitle:@"Ok"
-                                                      otherButtonTitles:nil];
-			[alertView show];
+			
 		}
 		else
 		{
@@ -714,6 +709,5 @@
 		}
 	}
 }
-
 
 @end

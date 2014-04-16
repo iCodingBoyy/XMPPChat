@@ -16,12 +16,17 @@
 #import <XMPPvCardAvatarModule.h>
 #import <XMPPvCardCoreDataStorage.h>
 #import <XMPPUserCoreDataStorageObject.h>
-#import <TURNSocket.h>
+#import <XMPPMessageArchivingCoreDataStorage.h>
+#import <XMPPMessageArchiving.h>
+#import <XMPPMessageDeliveryReceipts.h>
 
+#import "XMPPFileTransfer.h"
 
 #define KXMPPHostName @"www.savvy-tech.net"
+//#define KXMPPHostName @"mayuansusumutekimacbook-pro.local"
+
 #define KXMPPHostPort 5222
-#define KXMPPResource @"XMPPFrameWork"
+#define KXMPPResource @"Server"
 #define KXMPPConnectTimeOut 30
 
 
@@ -48,8 +53,10 @@ typedef void (^AuthComplete)();
 typedef void (^AuthError)(XMPPErrorCode errorCode);
 
 
+@protocol YZXMPPMgrDelegate;
 
-@interface YZXMPPManager : NSObject  <TURNSocketDelegate,GCDAsyncSocketDelegate>
+
+@interface YZXMPPManager : NSObject
 
 @property (nonatomic, strong, readonly) XMPPStream *xmppStream;
 @property (nonatomic, strong, readonly) XMPPReconnect *xmppReconnect;
@@ -60,10 +67,20 @@ typedef void (^AuthError)(XMPPErrorCode errorCode);
 @property (nonatomic, strong, readonly) XMPPCapabilities *xmppCapabilities;
 @property (nonatomic, strong, readonly) XMPPCapabilitiesCoreDataStorage *xmppCapabilitiesStorage;
 @property (nonatomic, strong, readonly) XMPPvCardCoreDataStorage *xmppvCardStorage;
+@property (nonatomic, strong, readonly) XMPPMessageArchivingCoreDataStorage *xmppMessageArchivingCoreDataStorage;
+@property (nonatomic, strong, readonly) XMPPMessageArchiving *xmppMessageArchiving;
+@property (nonatomic, strong, readonly) XMPPFileTransfer *xmppFileTransfer;
+
 
 @property (nonatomic, assign) XMPPOperation xmppOperation;
 @property (nonatomic, strong) NSData *sendData;
+
+@property (nonatomic, OBJ_WEAK) id<YZXMPPMgrDelegate> delegate;
+
 + (id)sharedYZXMPP;
+
+- (void)initXMPPStream;
+- (void)releaseXMPPStream;
 
 - (NSManagedObjectContext *)mgdObjContext_roster;
 - (NSManagedObjectContext *)mgdObjContext_capabilities;
@@ -87,9 +104,17 @@ typedef void (^AuthError)(XMPPErrorCode errorCode);
 - (void)fetchUserWithXMPPJID:(NSString*)searchField;
 
 - (void)xmppAddFriendsSubscribe:(NSString*)name;
+- (void)removeBuddy:(NSString*)name;
 - (void)setNickname:(NSString *)nickname forUser:(NSString*)jidUser;
 
 - (void)sendMessage:(NSString*)message toUser:(NSString*)user;
-- (void)sendFile:(NSData*)data toUser:(NSString*)xmppUser;
+- (BOOL)sendFile:(NSData *)data toUser:(NSString *)xmppUser;
 @end
 
+
+@protocol YZXMPPMgrDelegate <NSObject>
+
+- (void)YZXmppMgr:(YZXMPPManager*)XMPPMgr newBuddyOnline:(NSString*)userJID;
+- (void)YZXmppMgr:(YZXMPPManager*)XMPPMgr buddyWentOffline:(NSString*)userJID;
+- (void)YZXmppMgr:(YZXMPPManager*)XMPPMgr didReceiveJID:(XMPPJID *)userJID;
+@end
