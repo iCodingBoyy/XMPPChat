@@ -77,7 +77,7 @@ typedef void (^AuthError)(XMPPErrorCode errorCode);
 
 @property (nonatomic, OBJ_WEAK) id<YZXMPPMgrDelegate> delegate;
 
-+ (id)sharedYZXMPP;
++ (YZXMPPManager*)sharedYZXMPP;
 
 - (void)initXMPPStream;
 - (void)releaseXMPPStream;

@@ -19,8 +19,6 @@
 // Define various states
 #define STATE_INIT                0
 
-#define STATE_PROXY_DISCO_0096   8
-#define STATE_PROXY_DISCO_EXTRA  9
 #define STATE_PROXY_DISCO_ITEMS  10
 #define STATE_PROXY_DISCO_INFO   11
 #define STATE_PROXY_DISCO_ADDR   12
@@ -38,13 +36,12 @@
 #define SOCKS_CONNECT_REPLY_2  104
 
 // Define various timeouts (in seconds)
-#define TIMEOUT_DISCO_0096    100.00
-#define TIMEOUT_DISCO_ITEMS   800.00
-#define TIMEOUT_DISCO_INFO    800.00
-#define TIMEOUT_DISCO_ADDR    500.00
-#define TIMEOUT_CONNECT       180.00
-#define TIMEOUT_READ          500.00
-#define TIMEOUT_TOTAL        8000.00
+#define TIMEOUT_DISCO_ITEMS   8.00
+#define TIMEOUT_DISCO_INFO    8.00
+#define TIMEOUT_DISCO_ADDR    5.00
+#define TIMEOUT_CONNECT       8.00
+#define TIMEOUT_READ          5.00
+#define TIMEOUT_TOTAL        80.00
 
 // Declare private methods
 @interface TURNSocket (PrivateAPI)
@@ -95,7 +92,7 @@ static NSMutableArray *proxyCandidates;
 		initialized = YES;
 		
 		existingTurnSockets = [[NSMutableDictionary alloc] init];
-		proxyCandidates = [[NSMutableArray alloc] initWithObjects:@"172.16.23.87", nil];
+		proxyCandidates = [[NSMutableArray alloc] initWithObjects:@"jabber.org", nil];
 	}
 }
 
@@ -104,6 +101,8 @@ static NSMutableArray *proxyCandidates;
  * That is, the IQ must have a query with the proper namespace,
  * and it must not correspond to an existing TURNSocket.
 **/
+
+// 交互初始化，检查是不是新的请求<可能已经存在>
 + (BOOL)isNewStartTURNRequest:(XMPPIQ *)iq
 {
 	XMPPLogTrace();
@@ -153,56 +152,12 @@ static NSMutableArray *proxyCandidates;
 }
 
 
-+(BOOL)isSiTURNRequest:(XMPPIQ *)iq
-{
-//    <iq id="5CM1D-57" to="tjw1@172.16.23.87/Spark 2.6.3" from="tjw2@172.16.23.87/ Spark 2.6.3" type="set">
-//          <si xmlns="http://jabber.org/protocol/si" id="jsi_6333779828729958193"  mime-type="text/plain" profile="http://jabber.org/protocol/si/profile/file-transfer">
-//              <file xmlns="http://jabber.org/protocol/si/profile/file-transfer" name="readme.txt" size="1259">
-//                  <desc>Sending file</desc>
-//              </file>
-//           <feature xmlns="http://jabber.org/protocol/feature-neg">
-//              <x xmlns="jabber:x:data" type="form">
-//              <field var="stream-method" type="list-single">
-//    < option><value>http://jabber.org/protocol/bytestreams</value>
-//    </option>
-//    <option><value>http://jabber.org/protocol/ibb</value>
-//    </option>
-//    </field>
-//    </x>
-//    </si>
-//    </iq>
-    
-    NSXMLElement *si = [iq elementForName:@"si" xmlns:@"http://jabber.org/protocol/si"];
-    NSString *uuid = [[si attributeForName:@"id"]stringValue];
-    if(si &&uuid )
-    {
-        return YES;
-    }
-    return NO;
-       
-}
-
-+(void)responseSIRequest
-{
-//    <iq id="5CM1D-57" to="tjw2@172.16.23.87/Spark 2.6.3" from="tjw1@172.16.23.87/Spark 2.6.3" type="result">
-//      <si xmlns="http://jabber.org/protocol/si">
-//          <feature xmlns="http://jabber.org/protocol/feature-neg">
-//          <x xmlns="jabber:x:data" type="submit">
-//          <field var="stream-method">
-//          <value>http://jabber.org/protocol/bytestreams</value>
-//          <value>http://jabber.org/protocol/ibb</value>
-//          </field>
-//          </x>
-//          </feature>
-//          </si>
-//    </iq>
-}
-
 /**
  * Returns a list of proxy candidates.
  * 
  * You may want to configure this to include NSUserDefaults stuff, or implement your own static/dynamic list.
 **/
+// 返回代理候选列表
 + (NSArray *)proxyCandidates
 {
 	NSArray *result = nil;
@@ -217,6 +172,7 @@ static NSMutableArray *proxyCandidates;
 	return result;
 }
 
+// 设置代理候选列表
 + (void)setProxyCandidates:(NSArray *)candidates
 {
 	@synchronized(proxyCandidates)
@@ -417,12 +373,14 @@ static NSMutableArray *proxyCandidates;
 		
 		// Start the TURN procedure
 		
-		if (isClient){
-//            [self queryNextProxy0096];
+		if (isClient)
+        {
 			[self queryProxyCandidates];
         }
 		else
+        {
 			[self targetConnect];
+        }
 		
 	}});
 }
@@ -472,6 +430,27 @@ static NSMutableArray *proxyCandidates;
  * Sends the request, from initiator to target, to start a connection to one of the streamhosts.
  * This method automatically updates the state.
 **/
+// 初始方通知目标方流主机
+
+/*
+ <iq type='set'
+     from='initiator@example.com/foo'
+     to='target@example.org/bar'
+     id='initiate'>
+     <query xmlns='http://jabber.org/protocol/bytestreams'
+            sid='mySID'
+            mode='tcp'>
+            <streamhost
+                    jid='initiator@example.com/foo'
+                    host='192.168.4.1'
+                    port='5086'/>
+            <streamhost
+                    jid='streamhostproxy.example.net'
+                    host='24.24.24.1'
+                    zeroconf='_jabber.bytestreams'/>
+    </query>
+ </iq>
+ */
 - (void)sendRequest
 {
 	NSAssert(isClient, @"Only the Initiator sends the request");
@@ -494,7 +473,7 @@ static NSMutableArray *proxyCandidates;
 	{
 		[query addChild:[streamhosts objectAtIndex:i]];
 	}
-
+	
 	XMPPIQ *iq = [XMPPIQ iqWithType:@"set" to:jid elementID:uuid child:query];
 	
 	[xmppStream sendElement:iq];
@@ -506,17 +485,23 @@ static NSMutableArray *proxyCandidates;
 /**
  * Sends the reply, from target to initiator, notifying the initiator of the streamhost we connected to.
 **/
+
+// 目标方确认SOCKS5连接
+/*
+ <iq type='result'
+    from='target@example.org/bar'
+    to='initiator@example.com/foo'
+    id='initiate'>
+     <query xmlns='http://jabber.org/protocol/bytestreams'>
+        <streamhost-used jid='streamhostproxy.example.net'/>
+     </query>
+ </iq>
+ */
 - (void)sendReply
 {
 	NSAssert(!isClient, @"Only the Target sends the reply");
 	
 	XMPPLogTrace();
-	
-	// <iq type="result" to="initiator" id="123">
-	//   <query xmlns="http://jabber.org/protocol/bytestreams" sid="123">
-	//     <streamhost-used jid="proxy.domain"/>
-	//   </query>
-	// </iq>
 	
 	NSXMLElement *streamhostUsed = [NSXMLElement elementWithName:@"streamhost-used"];
 	[streamhostUsed addAttributeWithName:@"jid" stringValue:[proxyJID full]];
@@ -525,7 +510,7 @@ static NSMutableArray *proxyCandidates;
 	[query addAttributeWithName:@"sid" stringValue:uuid];
 	[query addChild:streamhostUsed];
 	
-	XMPPIQ *iq = [XMPPIQ iqWithType:@"result" to:jid  elementID:uuid child:query];
+	XMPPIQ *iq = [XMPPIQ iqWithType:@"result" to:jid elementID:uuid child:query];
 	
 	[xmppStream sendElement:iq];
 }
@@ -534,6 +519,17 @@ static NSMutableArray *proxyCandidates;
  * Sends the activate message to the proxy after the target and initiator are both connected to the proxy.
  * This method automatically updates the state.
 **/
+//  初始方请求激活流
+/*
+ <iq type='set'
+    from='initiator@example.com/foo'
+    to='streamhostproxy.example.net'
+    id='activate'>
+     <query xmlns='http://jabber.org/protocol/bytestreams' sid='mySID'>
+        <activate>target@example.org/bar</activate>
+     </query>
+ </iq>
+ */
 - (void)sendActivate
 {
 	NSAssert(isClient, @"Only the Initiator activates the proxy");
@@ -557,6 +553,18 @@ static NSMutableArray *proxyCandidates;
 /**
  * Sends the error, from target to initiator, notifying the initiator we were unable to connect to any streamhost.
 **/
+
+// 目标方拒绝字节流
+/*
+ <iq type='error'
+    from='target@example.org/bar'
+    to='initiator@example.com/foo'
+    id='initiate'>
+     <error code='406' type='auth'>
+        <not-acceptable xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+     </error>
+ </iq>
+ */
 - (void)sendError
 {
 	NSAssert(!isClient, @"Only the Target sends the error");
@@ -585,7 +593,6 @@ static NSMutableArray *proxyCandidates;
  * Invoked by XMPPClient when an IQ is received.
  * We can determine if the IQ applies to us by checking its element ID.
 **/
-//self3
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)iq
 {
 	// Disco queries (sent to jabber server) use id=discoUUID
@@ -596,7 +603,7 @@ static NSMutableArray *proxyCandidates;
 		if (![discoUUID isEqualToString:[iq elementID]])
 		{
 			// Doesn't apply to us, or is a delayed response that we've decided to ignore
-			return YES;
+			return NO;
 		}
 	}
 	else
@@ -604,20 +611,13 @@ static NSMutableArray *proxyCandidates;
 		if (![uuid isEqualToString:[iq elementID]])
 		{
 			// Doesn't apply to us
-			return YES;
+			return NO;
 		}
 	}
 	
 	XMPPLogTrace2(@"%@: %@ - state(%i)", THIS_FILE, THIS_METHOD, state);
 	
-    if(state == STATE_PROXY_DISCO_0096){
-        [self processDisco0096Response:iq];
-    }
-    else if (state == STATE_PROXY_DISCO_EXTRA){
-        [self processDiscoExtraResponse:iq];
-    }
-    
-	else if (state == STATE_PROXY_DISCO_ITEMS)
+	if (state == STATE_PROXY_DISCO_ITEMS)
 	{
 		[self processDiscoItemsResponse:iq];
 	}
@@ -639,41 +639,6 @@ static NSMutableArray *proxyCandidates;
 	}
 	
 	return YES;
-}
-
--(void)processDisco0096Response:(XMPPIQ *)iq{
-    XMPPLogTrace();
-    state = STATE_PROXY_DISCO_EXTRA;
-//    <iq type='result' to='myclient@domainopenfire/app' id='offer1'>
-//      <si xmlns='http://jabber.org/protocol/si'>
-//          <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'/>
-//          <feature xmlns='http://jabber.org/protocol/feature-neg'>
-//              <x xmlns='jabber:x:data' type='submit'>
-//                  <field var='stream-method'>
-//                      <value>http://jabber.org/protocol/bytestreams</value>
-//                      <value>http://jabber.org/protocol/ibb</value>
-//                  </field>
-//              </x>
-//          </feature>
-//      </si>
-//    </iq>
-    
-    NSXMLElement *si = [iq elementForName:@"si" xmlns:@"http://jabber.org/protocol/si"];
-    NSString *destinationId = [[iq attributeForName:@"id"]stringValue];
-
-    NSLog(@"%@",uuid);
-    if([destinationId isEqualToString:discoUUID])
-    {
-        [self queryproxyExtra];
-    }
-}
-
--(void)processDiscoExtraResponse:(XMPPIQ *)iq
-{
-//    SENT (1134075118): <iq id="5CM1D-58" to="tjw2@172.16.23.87/Spark 2.6.3" type="result" from="tjw1@172.16.23.87/Spark 2.6.3"><query xmlns="http://jabber.org/protocol/disco#info"><identity category="client" name="Smack" type="pc"/><feature var="http://jabber.org/protocol/xhtml-im"/><feature var="http://jabber.org/protocol/muc"/><feature var="http://jabber.org/protocol/bytestreams"/><feature var="http://jabber.org/protocol/commands"/><feature var="http://jabber.org/protocol/si/profile/file-transfer"/><feature var="http://jabber.org/protocol/si"/><feature var="http://jabber.org/protocol/ibb"/></query></iq>
-//    C2S - SENT (1134075118): <iq id="5CM1D-58" to="tjw2@172.16.23.87/Spark 2.6.3" type="result" from="tjw1@172.16.23.87/Spark 2.6.3"><query xmlns="http://jabber.org/protocol/disco#info"><identity category="client" name="Smack" type="pc"/><feature var="http://www.xmpp.org/extensions/xep-0166.html#ns"/><feature var="urn:xmpp:tmp:jingle"/></query></iq>
-
-    [self queryProxyCandidates];
 }
 
 - (void)processDiscoItemsResponse:(XMPPIQ *)iq
@@ -872,12 +837,10 @@ static NSMutableArray *proxyCandidates;
 		activated = [type caseInsensitiveCompare:@"result"] == NSOrderedSame;
 	}
 	
-	if (activated)
-    {
+	if (activated) {
 		[self succeed];
 	}
-	else
-    {
+	else {
 		[self fail];
 	}
 }
@@ -894,103 +857,6 @@ static NSMutableArray *proxyCandidates;
 - (void)updateDiscoUUID
 {
 	discoUUID = [xmppStream generateUUID];
-}
-
-//self1
--(void)queryProxy0096{
-    XMPPLogTrace();
-    [self queryNextProxy0096];
-}
-
--(void)queryNextProxy0096{
-    XMPPLogTrace();
-    state = STATE_PROXY_DISCO_0096;
-    
-
-//    <iq type='set' id='offer1' to='receiver@domainopenfire/Spark 2.6.3'' from="">
-//      <si xmlns='http://jabber.org/protocol/si'
-//             id='uuid'
-//              mime-type='text/plain'
-//                  profile='http://jabber.org/protocol/si/profile/file-transfer'>
-//          <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
-//              name='test.txt'
-//                  size='1022''>
-//              <desc>This is a test. If this were a real file...</desc>
-//          </file>
-//          <feature xmlns='http://jabber.org/protocol/feature-neg'>
-//              <x xmlns='jabber:x:data' type='form'>
-//                  <field var='stream-method' type='list-single'>
-//                      <option><value>http://jabber.org/protocol/bytestreams</value></option>
-//                      <option><value>http://jabber.org/protocol/ibb</value></option>
-//                  </field>
-//              </x>
-//          </feature>
-//      </si>
-//    </iq>
-    XMPPJID *xmppJid = nil;
-    
-    xmppJid = jid;
-    
-    XMPPIQ *iq  ;
-    
-    NSXMLElement *si = [NSXMLElement elementWithName:@"si" xmlns:@"http://jabber.org/protocol/si"];
-    [si addAttributeWithName:@"id" stringValue:uuid];
-    [si addAttributeWithName:@"mime-type" stringValue:@"text/plain"];
-    [si addAttributeWithName:@"profile" stringValue:@"http://jabber.org/protocol/si/profile/file-transfer"];
-    
-    NSXMLElement *file = [NSXMLElement elementWithName:@"file" xmlns:@"http://jabber.org/protocol/si/profile/file-transfer"];
-    [file addAttributeWithName:@"name" stringValue:@"readme.txt"];
-    [file addAttributeWithName:@"size" stringValue:@"1259"];
-    NSXMLElement *des = [NSXMLElement elementWithName:@"desc" stringValue:@"test"];
-    
-    [file addChild:des];
-    
-    NSXMLElement *feature = [NSXMLElement elementWithName:@"feature" xmlns:@"http://jabber.org/protocol/feature-neg"];
-    NSXMLElement *x = [NSXMLElement elementWithName:@"x" xmlns:@"jabber:x:data"];
-    [x addAttributeWithName:@"type" stringValue:@"form"];
-    NSXMLElement *field = [NSXMLElement elementWithName:@"field"];
-    [field addAttributeWithName:@"var" stringValue:@"stream-method"];
-    [field addAttributeWithName:@"type" stringValue:@"list-single"];
-    NSXMLElement *option1 = [NSXMLElement elementWithName:@"option"];
-    NSXMLElement *value1 = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/bytestreams"];
-    [option1 addChild:value1];
-    [field addChild:option1];
-    
-    NSXMLElement *option2 = [NSXMLElement elementWithName:@"option"];
-    NSXMLElement *value2 = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/ibb"];
-    [option2  addChild:value2];
-    [field addChild:option2];
-    
-    [x addChild:field];
-    [feature addChild:x];
-    [si addChild:file];
-    [si addChild:feature];
-    [self updateDiscoUUID];
-    iq = [XMPPIQ iqWithType:@"set" to:jid elementID:discoUUID child:si];
-    [iq addAttributeWithName:@"from" stringValue:[xmppStream.myJID full]] ;
-    [xmppStream sendElement:iq];
-    
-//    [self setupDiscoTimerForProxy0096];
-}
-
-
-//self4
--(void)queryproxyExtra{
-    [self queryNextProxyExtra];
-}
-
--(void)queryNextProxyExtra{
-//    <iq id="5CM1D-58" to="tjw1@172.16.23.87/Spark 2.6.3" type="get">
-//          <query xmlns="http://jabber.org/protocol/disco#info">
-//          </query>
-//    </iq>
-    state = STATE_PROXY_DISCO_EXTRA;
-    NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#info"];
-    [self updateDiscoUUID];
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"get" to:jid elementID:discoUUID child:query];
-    [xmppStream sendElement:iq];
-
- 
 }
 
 /**
@@ -1047,9 +913,7 @@ static NSMutableArray *proxyCandidates;
 		[self updateDiscoUUID];
 		
 		NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#items"];
-		
 		XMPPIQ *iq = [XMPPIQ iqWithType:@"get" to:proxyCandidateJID elementID:discoUUID child:query];
-		
 		[xmppStream sendElement:iq];
 		
 		[self setupDiscoTimerForDiscoItems];
@@ -1069,7 +933,6 @@ static NSMutableArray *proxyCandidates;
 			// We were unable to find a single proxy server from our list
 			
 			XMPPLogVerbose(@"%@: No proxies found", THIS_FILE);
-			
 			[self fail];
 		}
 	}
@@ -1085,7 +948,7 @@ static NSMutableArray *proxyCandidates;
 	
 	// Most of the time, the proxy will have a domain name that includes the word "proxy".
 	// We can speed up the process of discovering the proxy by searching for these domains, and querying them first.
-	
+	// 将查询到的代理放在最前面
 	NSUInteger i;
 	for (i = 0; i < [candidateJIDs count]; i++)
 	{
@@ -1123,12 +986,10 @@ static NSMutableArray *proxyCandidates;
 	{
 		[self updateDiscoUUID];
 		
+        // 查询是否是字节流代理
 		XMPPJID *candidateJID = [candidateJIDs objectAtIndex:candidateJIDIndex];
-		
 		NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#info"];
-		
 		XMPPIQ *iq = [XMPPIQ iqWithType:@"get" to:candidateJID elementID:discoUUID child:query];
-		
 		[xmppStream sendElement:iq];
 		
 		[self setupDiscoTimerForDiscoInfo];
@@ -1392,15 +1253,15 @@ static NSMutableArray *proxyCandidates;
 - (void)socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(UInt16)port
 {
 	XMPPLogTrace();
-    asyncSocket = sock;
+	
 	// Start the SOCKS protocol stuff
 	[self socksOpen];
 }
-//self5
+
 - (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
 {
 	XMPPLogTrace();
-	NSLog(@"readDataInSocket %lu",(unsigned long)[data length]);
+	
 	if (tag == SOCKS_OPEN)
 	{
 		// See socksOpen method for socks reply format
@@ -1409,7 +1270,7 @@ static NSMutableArray *proxyCandidates;
 		UInt8 mtd = [NSNumber xmpp_extractUInt8FromData:data atOffset:1];
 		
 		XMPPLogVerbose(@"TURNSocket: SOCKS_OPEN: ver(%o) mtd(%o)", ver, mtd);
-		NSLog(@"%c%c",ver,mtd);
+		
 		if(ver == 5 && mtd == 0)
 		{
 			[self socksConnect];
@@ -1496,7 +1357,7 @@ static NSMutableArray *proxyCandidates;
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
 {
 	XMPPLogTrace2(@"%@: %@ %@", THIS_FILE, THIS_METHOD, err);
-	NSLog(@"%@,%@",err,[err description]);
+	
 	if (state == STATE_TARGET_CONNECT)
 	{
 		[self targetNextConnect];
@@ -1531,21 +1392,6 @@ static NSMutableArray *proxyCandidates;
 		dispatch_source_set_timer(discoTimer, tt, DISPATCH_TIME_FOREVER, 0.1);
 	}
 }
-
-//self2
--(void)setupDiscoTimerForProxy0096{
-    XMPPLogTrace();
-    
-    [self setupDiscoTimer:80];
-    
-    NSString *theUUID = discoUUID;
-    
-    dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
-		
-		[self doDiscoItemsTimeout:theUUID];
-	}});
-}
-
 
 - (void)setupDiscoTimerForDiscoItems
 {
@@ -1588,9 +1434,6 @@ static NSMutableArray *proxyCandidates;
 		[self doDiscoAddressTimeout:theUUID];
 	}});
 }
-
-
-
 
 - (void)doDiscoItemsTimeout:(NSString *)theUUID
 {

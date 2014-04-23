@@ -1143,10 +1143,12 @@ enum GCDAsyncSocketConfig
 		delegate = newDelegate;
 	};
 	
-	if (dispatch_get_specific(IsOnSocketQueueOrTargetQueueKey)) {
+	if (dispatch_get_specific(IsOnSocketQueueOrTargetQueueKey))
+    {
 		block();
 	}
-	else {
+	else
+    {
 		if (synchronously)
 			dispatch_sync(socketQueue, block);
 		else

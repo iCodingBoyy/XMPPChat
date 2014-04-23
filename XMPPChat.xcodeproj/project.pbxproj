@@ -19,6 +19,7 @@
 		6B13C39A18E51667002E3AF0 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B13C38218E51667002E3AF0 /* UIKit.framework */; };
 		6B13C3A218E51667002E3AF0 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6B13C3A018E51667002E3AF0 /* InfoPlist.strings */; };
 		6B13C3A418E51667002E3AF0 /* XMPPChatTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B13C3A318E51667002E3AF0 /* XMPPChatTests.m */; };
+		6B1814F619060EA700443A2F /* XmppChat.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = 6B1814F419060EA700443A2F /* XmppChat.xcdatamodeld */; };
 		6B4ED1D918EBC9B200E69BD1 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6B4ED1D818EBC9B200E69BD1 /* QuartzCore.framework */; };
 		6B4ED1F218EC05F700E69BD1 /* chat_bg_default.jpg in Resources */ = {isa = PBXBuildFile; fileRef = 6B4ED1E218EC05F700E69BD1 /* chat_bg_default.jpg */; };
 		6B4ED1F318EC05F700E69BD1 /* chat_bottom_keyboard_nor.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B4ED1E318EC05F700E69BD1 /* chat_bottom_keyboard_nor.png */; };
@@ -76,6 +77,7 @@
 		6B8F8A3118F52FE200DBC675 /* MKEntryPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */; };
 		6B8F8A3218F52FE200DBC675 /* TopBar.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2E18F52FE200DBC675 /* TopBar.png */; };
 		6B8F8A3318F52FE200DBC675 /* TopBar@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2F18F52FE200DBC675 /* TopBar@2x.png */; };
+		6B9D804C190526A7005D08B1 /* XMPPFileManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B9D804B190526A7005D08B1 /* XMPPFileManager.m */; };
 		6BB737AE18ED188C00F9B90A /* NSObject+PropertyListing.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */; };
 		6BB737B418ED50CF00F9B90A /* YZTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737B318ED50CF00F9B90A /* YZTextField.m */; };
 		6BDE825A18E51D7B00356E41 /* YZXMPPManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BDE825918E51D7B00356E41 /* YZXMPPManager.m */; };
@@ -117,6 +119,7 @@
 		6B13C39F18E51667002E3AF0 /* XMPPChatTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "XMPPChatTests-Info.plist"; sourceTree = "<group>"; };
 		6B13C3A118E51667002E3AF0 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		6B13C3A318E51667002E3AF0 /* XMPPChatTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XMPPChatTests.m; sourceTree = "<group>"; };
+		6B1814F519060EA700443A2F /* XmppChat.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = XmppChat.xcdatamodel; sourceTree = "<group>"; };
 		6B4ED1D718EBBF0500E69BD1 /* YZMacroDefine.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZMacroDefine.h; sourceTree = "<group>"; };
 		6B4ED1D818EBC9B200E69BD1 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		6B4ED1E218EC05F700E69BD1 /* chat_bg_default.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = chat_bg_default.jpg; sourceTree = "<group>"; };
@@ -192,6 +195,8 @@
 		6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MKEntryPanel.xib; sourceTree = "<group>"; };
 		6B8F8A2E18F52FE200DBC675 /* TopBar.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = TopBar.png; sourceTree = "<group>"; };
 		6B8F8A2F18F52FE200DBC675 /* TopBar@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "TopBar@2x.png"; sourceTree = "<group>"; };
+		6B9D804A190526A7005D08B1 /* XMPPFileManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPFileManager.h; sourceTree = "<group>"; };
+		6B9D804B190526A7005D08B1 /* XMPPFileManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPFileManager.m; sourceTree = "<group>"; };
 		6BB737AC18ED188C00F9B90A /* NSObject+PropertyListing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSObject+PropertyListing.h"; sourceTree = "<group>"; };
 		6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSObject+PropertyListing.m"; sourceTree = "<group>"; };
 		6BB737B218ED50CF00F9B90A /* YZTextField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZTextField.h; sourceTree = "<group>"; };
@@ -318,6 +323,14 @@
 				6B13C3A018E51667002E3AF0 /* InfoPlist.strings */,
 			);
 			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		6B1814F319060E8C00443A2F /* CoreData */ = {
+			isa = PBXGroup;
+			children = (
+				6B1814F419060EA700443A2F /* XmppChat.xcdatamodeld */,
+			);
+			path = CoreData;
 			sourceTree = "<group>";
 		};
 		6B4ED1E118EC05F700E69BD1 /* chat_image */ = {
@@ -472,8 +485,11 @@
 		6BDE825718E51D6500356E41 /* XMPP */ = {
 			isa = PBXGroup;
 			children = (
+				6B1814F319060E8C00443A2F /* CoreData */,
 				6BDE825818E51D7B00356E41 /* YZXMPPManager.h */,
 				6BDE825918E51D7B00356E41 /* YZXMPPManager.m */,
+				6B9D804A190526A7005D08B1 /* XMPPFileManager.h */,
+				6B9D804B190526A7005D08B1 /* XMPPFileManager.m */,
 				6B8F8A2718F4DE7600DBC675 /* XMPPFileTransfer.h */,
 				6B8F8A2818F4DE7600DBC675 /* XMPPFileTransfer.m */,
 				6BF6C1AC18FCDE4F00B31984 /* XMPPFileSKConnect.h */,
@@ -687,12 +703,14 @@
 				6B4ED22E18EC131D00E69BD1 /* YZChatLocationCell.m in Sources */,
 				6B6BF06418E9513F00E05F5E /* TPKeyboardAvoidingScrollView.m in Sources */,
 				6B13C38F18E51667002E3AF0 /* AppDelegate.m in Sources */,
+				6B1814F619060EA700443A2F /* XmppChat.xcdatamodeld in Sources */,
 				6BECF9CE18F6803900A717C9 /* YZRecentChatListCell.m in Sources */,
 				6B4ED22818EC12F200E69BD1 /* YZChatVideoCell.m in Sources */,
 				6BFEB19418EA97FC00D14B17 /* YZChatViewController.m in Sources */,
 				6B6BF03A18E9445E00E05F5E /* RosterViewController.m in Sources */,
 				6B8F8A2918F4DE7600DBC675 /* XMPPFileTransfer.m in Sources */,
 				6B13C38B18E51667002E3AF0 /* main.m in Sources */,
+				6B9D804C190526A7005D08B1 /* XMPPFileManager.m in Sources */,
 				6B6BF03D18E944B000E05F5E /* RecentMsgViewController.m in Sources */,
 				6B6BF04318E9450500E05F5E /* NewsViewController.m in Sources */,
 				6B4ED21C18EC127100E69BD1 /* YZChatToolBoxView.m in Sources */,
@@ -920,6 +938,19 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCVersionGroup section */
+		6B1814F419060EA700443A2F /* XmppChat.xcdatamodeld */ = {
+			isa = XCVersionGroup;
+			children = (
+				6B1814F519060EA700443A2F /* XmppChat.xcdatamodel */,
+			);
+			currentVersion = 6B1814F519060EA700443A2F /* XmppChat.xcdatamodel */;
+			path = XmppChat.xcdatamodeld;
+			sourceTree = "<group>";
+			versionGroupType = wrapper.xcdatamodel;
+		};
+/* End XCVersionGroup section */
 	};
 	rootObject = 6B13C37318E51667002E3AF0 /* Project object */;
 }

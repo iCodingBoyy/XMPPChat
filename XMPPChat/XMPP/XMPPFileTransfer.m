@@ -240,8 +240,8 @@
 
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
 {
+    NSLog(@"---%s---%@",__FUNCTION__,inIq.description);
     
-//    NSLog(@"---%s--%@",__FUNCTION__,inIq.description);
     NSString *type = [inIq type];
     if ([@"set" isEqualToString:type])// 接收文件传输响应
     {
@@ -254,44 +254,27 @@
                 if ([@"http://jabber.org/protocol/si/profile/file-transfer" isEqualToString:[file xmlns]])
                 {
                     NSXMLElement *feature = [[inIq elementForName:@"si"] elementForName:@"feature"];
-                    NSString *xmlns = [feature xmlns];
-                    if ([@"http://jabber.org/protocol/feature-neg" isEqualToString:xmlns])
+                    if ([@"http://jabber.org/protocol/feature-neg" isEqualToString:[feature xmlns]])
                     {
+                        NSLog(@"---目标方收到请求--");
                         _receiveIQ = inIq;
                         NSString *from = [inIq fromStr];
                         self.fileName = [[file attributeForName:@"name"] stringValue];
-                        UIAlertView *alertView = [[UIAlertView alloc]initWithTitle:from
-                                                                           message:_fileName
-                                                                          delegate:self
-                                                                 cancelButtonTitle:@"拒绝"
-                                                                 otherButtonTitles:@"接收", nil];
-                        [alertView setTag:10000];
-                        [alertView show];
-                        return YES;
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            UIAlertView *alertView = [[UIAlertView alloc]initWithTitle:from
+                                                                               message:_fileName
+                                                                              delegate:self
+                                                                     cancelButtonTitle:@"拒绝"
+                                                                     otherButtonTitles:@"接收", nil];
+                            [alertView setTag:10000];
+                            [alertView show];
+                        });
+                        
+                        return NO;
                     }
                 }
             }
-        }
-        else
-        {
-            NSXMLElement *query = [inIq elementForName:@"query"];
-            if (query != nil)
-            {
-                if ([@"http://jabber.org/protocol/bytestreams" isEqualToString:[query xmlns]])
-                {
-                    NSString *querySid = [[query attributeForName:@"sid"] stringValue];
-                    if ([_sid isEqualToString:querySid])
-                    {
-                        return YES;
-                    }
-                    else
-                    {
-                        NSLog(@"----流主机代理错误----");
-                        return [self sendStreamHostNegotiationError:inIq];
-                    }
-                }
-            }
-        }
+        }// if <si>
     }
     else if ([@"error" isEqualToString:type])// 对方中断文件传输，文件传输被禁止
     {
@@ -316,11 +299,11 @@
                 NSXMLElement *feature = [[inIq elementForName:@"si"] elementForName:@"feature"];
                 if ([@"http://jabber.org/protocol/feature-neg" isEqualToString:[feature xmlns]])
                 {
-                    NSLog(@"-%s-对方接受文件传输",__FUNCTION__);
+                    NSLog(@"-%s-初始方开始文件传输",__FUNCTION__);
                     XMPPFileSKConnect *connect = [[XMPPFileSKConnect alloc]initWithStream:xmppStream toJID:inIq.from];
                     [connect startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
                     [_fileSocketsArray addObject:connect];
-                    return YES;
+                    return NO;
                 }
             }
         }
@@ -332,10 +315,12 @@
 {
     if (buttonIndex == 0)
     {
+        NSLog(@"---目标方拒绝文件传输----");
         [self sendRejectNegotiationResponse:_receiveIQ];
     }
     else
     {
+        NSLog(@"---目标方接收文件传输----");
         [self sendNegotiationResponse:_receiveIQ];
         XMPPFileSKConnect *connect = [[XMPPFileSKConnect alloc]initWithStream:xmppStream inComingSKRequest:_receiveIQ];
         [connect startWithDelegate:self delegateQueue:dispatch_get_main_queue()];

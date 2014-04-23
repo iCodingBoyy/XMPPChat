@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model userDefinedModelVersionIdentifier="" type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="5063" systemVersion="13C64" minimumToolsVersion="Xcode 4.3" macOSVersion="Automatic" iOSVersion="Automatic">
+    <entity name="XmppMessage" syncable="YES">
+        <attribute name="fileName" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="fileSize" optional="YES" attributeType="Integer 32" defaultValueString="0" syncable="YES"/>
+        <attribute name="fullPath" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="hashValue" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="messageBody" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="messageState" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="messageType" optional="YES" attributeType="Integer 16" defaultValueString="0" syncable="YES"/>
+        <attribute name="mimeType" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="outGoing" optional="YES" attributeType="Boolean" syncable="YES"/>
+        <attribute name="receiverJID" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="senderJID" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="thumbnailPath" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="timeStamp" optional="YES" attributeType="Date" syncable="YES"/>
+    </entity>
+    <entity name="XmppRecentSession" syncable="YES">
+        <attribute name="messageBody" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="outGoing" optional="YES" attributeType="Boolean" syncable="YES"/>
+        <attribute name="receiverJID" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="senderJID" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="timeStamp" optional="YES" attributeType="Date" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="XmppMessage" positionX="-63" positionY="-18" width="128" height="240"/>
+        <element name="XmppRecentSession" positionX="-54" positionY="90" width="128" height="118"/>
+    </elements>
+</model>

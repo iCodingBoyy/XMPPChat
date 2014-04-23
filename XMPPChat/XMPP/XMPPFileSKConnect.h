@@ -8,8 +8,7 @@
 
 // XMPP XEP-065
 
-#import "XMPPModule.h"
-#import "XMPPModule.h"
+#import <Foundation/Foundation.h>
 #import <XMPP.h>
 
 

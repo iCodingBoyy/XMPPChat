@@ -89,9 +89,12 @@
 {
     NSParameterAssert(aDelegate != nil);
     NSParameterAssert(aDelegateQueue != NULL);
+    
     _delegate = aDelegate;
     delegateQueue = aDelegateQueue;
-    [_xmppStream addDelegate:self delegateQueue:fileSKQueue];
+    
+    [_xmppStream addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    
     if (_isClient)
     {
         // 初始方发送服务发现请求给目标方
@@ -109,14 +112,8 @@
         NSXMLElement *query = [iq elementForName:@"query"];
         if (query && [query.xmlns isEqualToString:@"http://jabber.org/protocol/disco#info"])
         {
-            NSString *elementID = [iq elementID];
-            
-            // 初始方发送服务发现请求给目标方
-            if ( [discoUUID isEqualToString:elementID])
-            {
-                // 目标方应答服务发现请求
-                return [self sendByteStreamsSupportQueryReponse:iq];
-            }
+            NSLog(@"--目标方应答服务发现请求---");
+            return [self sendByteStreamsSupportQueryReponse:iq];
         }
     }
     
@@ -128,11 +125,9 @@
             if ([query.xmlns isEqualToString:@"http://jabber.org/protocol/disco#info"])
             {
                 NSString *elementID = [iq elementID];
-                
-                // 目标方应答服务发现请求
-                if ( [@"hello" isEqualToString:elementID])
+                if ( [discoUUID isEqualToString:elementID])
                 {
-                    // 初始方发送服务发现请求给服务器
+                    NSLog(@"--初始方发送服务发现请求给服务器--");
                     return [self sendFindProxyServerRequest];
                 }
                 
@@ -151,8 +146,10 @@
                             found = YES;
                         }
                     }
+                    
                     if (found) // 发现了代理
                     {
+                        NSLog(@"----发现了代理，查询网络地址---");
                         // 初始方从代理方那里请求网络地址
                         return [self sendQueryNetworkAddressRequest:iq.from];
                     }
@@ -162,6 +159,7 @@
                         {
                             [_candidateJIDsArray removeObjectAtIndex:0];
                         }
+                        
                         if (_candidateJIDsArray.count > 0)
                         {
                             XMPPJID *candidateJID = [_candidateJIDsArray objectAtIndex:0];
@@ -177,6 +175,7 @@
                 NSString *elementID = [iq elementID];
                 if ( [@"server_items" isEqualToString:elementID])
                 {
+                    NSLog(@"--服务器应答服务发现请求--");
                     NSArray *itemsArray = (NSArray*)[query elementsForName:@"item"];
                     _candidateJIDsArray = [[NSMutableArray alloc]initWithCapacity:itemsArray.count];
                     
@@ -189,6 +188,7 @@
                             [_candidateJIDsArray addObject:xmppJID];
                         }
                     }
+                    
                     for (int j = 0; j < _candidateJIDsArray.count; j++)
                     {
                         XMPPJID *candidateJID = [_candidateJIDsArray objectAtIndex:j];
@@ -204,7 +204,7 @@
                     if (_candidateJIDsArray.count > 0)
                     {
                         XMPPJID *candidateJID = [_candidateJIDsArray objectAtIndex:0];
-                        // 初始方发送服务发现请求给代理
+                        NSLog(@"--初始方发送服务发现请求给代理--");
                         return [self sendServiceDiscoRequest:candidateJID];
                     }
                 }
@@ -217,6 +217,7 @@
                 NSString *elementID = [iq elementID];
                 if ([@"discover" isEqualToString:elementID])
                 {
+                    
                     NSXMLElement *streamhost = [query elementForName:@"streamhost"];
                     NSString *jid = [[streamhost attributeForName:@"jid"]stringValue];
                     _proxyJID = [XMPPJID jidWithString:jid];
@@ -226,6 +227,7 @@
                     
                     if (_proxyJID != nil || _proxyHost != nil || _proxyPort > 0)
                     {
+                        NSLog(@"-----发信了网络地址-----");
                         return  [self sendNetworkAddressToReceiver:_proxyJID host:_proxyHost port:port];
                     }
                 }
@@ -236,12 +238,15 @@
                     NSString *jid = [[streamHostEle attributeForName:@"jid"]stringValue];
                     _proxyJID = [XMPPJID jidWithString:jid];
                     
-                    asyncSocket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:fileSKQueue];
+                    asyncSocket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
                     NSError *err = nil;
-                    if ([asyncSocket connectToHost:_proxyHost onPort:7777 withTimeout:8.00 error:&err])
+                    if (![asyncSocket connectToHost:_proxyHost onPort:7777 withTimeout:8.00 error:&err])
                     {
-                        NSLog(@"-----socket连接错误---");
-                        [self sendActivateRequest:_receiveJID hostJID:_proxyJID];
+                        NSLog(@"-----初始方socket连接错误---");
+                    }
+                    else
+                    {
+                        NSLog(@"----初始方连接到主机----");
                     }
                 }
             }//if
@@ -259,6 +264,8 @@
                 NSString *elementID = [iq elementID];
                 if ([@"initiate" isEqualToString:elementID])
                 {
+                    NSLog(@"----目标方获取到网络地址----");
+                    _sid = [[query attributeForName:@"sid"]stringValue];
                     NSXMLElement *streamhost = [query elementForName:@"streamhost"];
                     _proxyHost = [[streamhost attributeForName:@"host"]stringValue];
                     NSString *port = [[streamhost attributeForName:@"port"]stringValue];
@@ -266,22 +273,16 @@
                     _proxyJID = [XMPPJID jidWithString:jid];
                     _proxyPort = [port integerValue];
                     
-                    if (asyncSocket == nil)
-                    {
-                        asyncSocket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:fileSKQueue];
-                    }
-                    else
-                    {
-                        NSAssert([asyncSocket isDisconnected], @"Expecting the socket to be disconnected at this point...");
-                    }
+                    asyncSocket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:dispatch_get_main_queue()];
                     NSError *err = nil;
-                    if (![asyncSocket connectToHost:_proxyHost onPort:_proxyPort  withTimeout:8.00 error:&err])
+                    if (![asyncSocket connectToHost:_proxyHost onPort:7777  withTimeout:8.00 error:&err])
                     {
+                        NSLog(@"----目标方无法连接到主机----");
                         return [self sendInitiateSocket5Error:iq.from];
                     }
                     else
                     {
-                        return [self sendinitiateSocket5Finished:iq.from hostJID:_proxyJID];
+                        NSLog(@"----目标方连接到主机----");
                     }
                 }
             }
@@ -292,7 +293,7 @@
     {
         NSLog(@"---socketl连接建立失败----");
     }
-    return NO;
+    return YES;
 }
 
 
@@ -346,15 +347,42 @@
     [iq addChild:query];
     
     NSXMLElement *identity = [NSXMLElement elementWithName:@"identity"];
-    [identity addAttributeWithName:@"category" stringValue:@"proxy"];
-    [identity addAttributeWithName:@"type" stringValue:@"bytestreams"];
-    [identity addAttributeWithName:@"name" stringValue:@"SOCKS5 Bytestreams Service"];
+    [identity addAttributeWithName:@"category" stringValue:@"client"];
+    [identity addAttributeWithName:@"type" stringValue:@"pc"];
+    [identity addAttributeWithName:@"name" stringValue:@"Psi"];
+    [query addChild:identity];
     
     NSXMLElement *feature = [NSXMLElement elementWithName:@"feature"];
     [feature addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/bytestreams"];
-    
-    [query addChild:identity];
     [query addChild:feature];
+    
+    NSXMLElement *feature1 = [NSXMLElement elementWithName:@"feature"];
+    [feature1 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/si"];
+    [query addChild:feature1];
+    
+    NSXMLElement *feature2 = [NSXMLElement elementWithName:@"feature"];
+    [feature2 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/si/profile/file-transfer"];
+    [query addChild:feature2];
+    
+    NSXMLElement *feature3 = [NSXMLElement elementWithName:@"feature"];
+    [feature3 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/commands"];
+    [query addChild:feature3];
+    
+    NSXMLElement *feature4 = [NSXMLElement elementWithName:@"feature"];
+    [feature4 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/rosterx"];
+    [query addChild:feature4];
+    
+    NSXMLElement *feature5 = [NSXMLElement elementWithName:@"feature"];
+    [feature5 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/muc"];
+    [query addChild:feature5];
+    
+    NSXMLElement *feature6 = [NSXMLElement elementWithName:@"feature"];
+    [feature6 addAttributeWithName:@"var" stringValue:@"jabber:x:data"];
+    [query addChild:feature6];
+    
+    NSXMLElement *feature7 = [NSXMLElement elementWithName:@"feature"];
+    [feature7 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/disco#info"];
+    [query addChild:feature7];
     
     [_xmppStream sendElement:iq];
     
@@ -534,8 +562,8 @@
     [streamhost addAttributeWithName:@"host" stringValue:host];
     [streamhost addAttributeWithName:@"port" stringValue:port];
     [query addChild:streamhost];
-    
-    [_xmppStream sendElement:query];
+    NSLog(@"------address---%@",iq.description);
+    [_xmppStream sendElement:iq];
     return YES;
 }
 
@@ -615,7 +643,7 @@
     NSXMLElement *streamhost_used = [NSXMLElement elementWithName:@"streamhost-used"];
     [streamhost_used addAttributeWithName:@"jid" stringValue:hostJID.full];
     [query addChild:streamhost_used];
-    
+    NSLog(@"----%s---%@",__FUNCTION__,iq.description);
     [_xmppStream sendElement:iq];
     return YES;
 }
@@ -640,9 +668,9 @@
      to='initiator@example.com/foo'
      id='activate'/>
  */
-- (BOOL)sendActivateRequest:(XMPPJID*)jid hostJID:(XMPPJID*)hostJID
+- (BOOL)sendActivateRequest:(XMPPJID*)jid
 {
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" to:hostJID elementID:@"activate"];
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" to:_proxyJID elementID:@"activate"];
     
     NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/bytestreams"];
     [query addAttributeWithName:@"sid" stringValue:_sid];
@@ -650,7 +678,7 @@
     
     NSXMLElement *activate = [NSXMLElement elementWithName:@"activate" stringValue:jid.full];
     [query addChild:activate];
-    
+    NSLog(@"---iq---%@",iq.description);
     [_xmppStream sendElement:iq];
     return YES;
 }
@@ -662,19 +690,21 @@
 
 - (void)socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(uint16_t)port
 {
-    DEBUG_METHOD(@"--%s--",__FUNCTION__);
+    NSLog(@"--%s--",__FUNCTION__);
     [self socksOpen];
 }
 
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
 {
-    DEBUG_METHOD(@"--%s--",__FUNCTION__);
+    NSLog(@"--%s--",__FUNCTION__);
     
 }
 
 - (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
 {
-    DEBUG_METHOD(@"--%s--",__FUNCTION__);
+    NSLog(@"----%s---%@",__FUNCTION__,data);
+    
+    NSLog(@"--%s--%ld",__FUNCTION__,tag);
     if (tag == 101)
 	{
 		// See socksOpen method for socks reply format
@@ -683,24 +713,24 @@
 		
 		if(ver == 5 && mtd == 0)
 		{
+            // 收到 | 05 00 | 可以代理，进一步建立连接
+            NSLog(@"----建立代理--");
 			[self socksConnect];
 		}
 		else
 		{
-			// Some kind of error occurred.
-			// The proxy probably requires some kind of authentication.
 			[asyncSocket disconnect];
 		}
 	}
     else if (tag == 103)
 	{
-        // See socksConnect method for socks reply format
-		
 		UInt8 ver = [NSNumber xmpp_extractUInt8FromData:data atOffset:0];
 		UInt8 rep = [NSNumber xmpp_extractUInt8FromData:data atOffset:1];
 		
 		if(ver == 5 && rep == 0)
 		{
+            NSLog(@"---收到服务器--5 0 0 3--");
+            // 收到服务器 5 0 0 3
 			// We read in 5 bytes which we expect to be:
 			// 0: ver  = 5
 			// 1: rep  = 0
@@ -738,8 +768,9 @@
 	{
 		if (_isClient)
 		{
+            DEBUG_METHOD(@"-----发送流激活信息---");
 			//发送流激活消息
-            [self sendActivateRequest:_receiveJID hostJID:_proxyJID];
+            [self sendActivateRequest:_receiveJID];
 		}
 		else
 		{
@@ -756,6 +787,7 @@
 
 - (void)socksOpen
 {
+    // SOCKS Server 缺省侦听在1080/TCP端口，SOCKS Client连接到SOKCS Server之后发送第一个报文
     //      +-----+-----------+---------+
 	// NAME | VER | NMETHODS  | METHODS |
 	//      +-----+-----------+---------+
@@ -782,6 +814,7 @@
 	
 	[asyncSocket writeData:data withTimeout:-1 tag:101];
     
+    // socks Server从METHOD 方法中选中一个字节（一种认证机制），并向SOCKS Client发送响应报文
     //      +-----+--------+
 	// NAME | VER | METHOD |
 	//      +-----+--------+
@@ -792,6 +825,21 @@
 	//
 	// Version = 5 (for SOCKS5)
 	// Method  = 0 (No authentication, anonymous access)
+    // Method 可用值
+    /*
+     0x00 NO AUTHENTICATION REQUEIRED （无需认证）
+     0x01 GSSAPI
+     0x02 USERNAME/PASSWORD（用户名/口令认证机制）
+     0x03-0x7F IANA ASSIGNED
+     0x80-0xFE RESERVED FOR PRIVATE METHODS（私有认证机制）
+     0xFF NO ACCEPTABLE METHODS（完全不兼容）
+     
+     如果SOCKS Server响应0xFF,表示SOCKS Server与SOCKS Client 完全不兼容，
+     SOCKS Client必须关闭TCP连接。认证机制协商完成后，SOCKS Clent与SOCKS 
+     Server 进行认证机制相关的子协商，参看其他文档。为保持最广泛的兼容性，
+     SOCKS Client、SOCKS Server必须支持0x01,同事应该支持0x02.
+
+     */
 	
 	[asyncSocket readDataToLength:2 withTimeout:5.00 tag:101];
 }
@@ -812,6 +860,7 @@
 	NSData *hashRaw = [[hashMe dataUsingEncoding:NSUTF8StringEncoding] xmpp_sha1Digest];
 	NSData *hash = [[hashRaw xmpp_hexStringValue] dataUsingEncoding:NSUTF8StringEncoding];
 	
+    // 认证机制相关的子协商完成后，SOCKS Client提交转发请求
 	//      +-----+-----+-----+------+------+------+
 	// NAME | VER | CMD | RSV | ATYP | ADDR | PORT |
 	//      +-----+-----+-----+------+------+------+
@@ -826,7 +875,28 @@
 	// Address Type = 3 (1=IPv4, 3=DomainName 4=IPv6)
 	// Address      = P:D (P=LengthOfDomain D=DomainWithoutNullTermination)
 	// Port         = 0
-	
+    
+	// CMD可取值如下：
+    //   +------+-----------------+
+    //   | 0x01 |     CONNECT     |
+    //   +------+-----------------+
+    //   | 0x02 |       BIND      |
+    //   +------+-----------------+
+    //   | 0x03 |  UDP ASSOCIATE  |
+    //   +------+-----------------+
+    
+    // RSV 保留字段，必须为0x00
+    
+    // ATYP 用于指明DST.ADDR域的类型，可取如下值：
+    //   +------+-----------------+
+    //   | 0x01 |     IPV4 地址    |
+    //   +------+-----------------+
+    //   | 0x03 |  FQDN(全称域名)  |
+    //   +------+-----------------+
+    //   | 0x04 |      IPV6地址    |
+    //   +------+-----------------+
+    
+    
 	uint byteBufferLength = (uint)(4 + 1 + [hash length] + 2);
 	void *byteBuffer = malloc(byteBufferLength);
 	
@@ -851,7 +921,7 @@
 	memcpy(byteBuffer+5+[hash length], &port, sizeof(port));
 	
 	NSData *data = [NSData dataWithBytesNoCopy:byteBuffer length:byteBufferLength freeWhenDone:YES];
-	
+	NSLog(@"----%s--%@",__FUNCTION__,data);
 	[asyncSocket writeData:data withTimeout:-1 tag:102];
 	
 	//      +-----+-----+-----+------+------+------+

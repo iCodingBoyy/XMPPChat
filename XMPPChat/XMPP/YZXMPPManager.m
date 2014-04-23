@@ -27,7 +27,7 @@
 
 @implementation YZXMPPManager
 
-+ (id)sharedYZXMPP
++ (YZXMPPManager*)sharedYZXMPP
 {
     static dispatch_once_t pred;
     static YZXMPPManager *xmppManager = nil;
@@ -78,10 +78,10 @@
 	_xmppvCardAvatarModule = [[XMPPvCardAvatarModule alloc] initWithvCardTempModule:_xmppvCardTempModule];
     
     // cap
-    _xmppCapabilitiesStorage = [XMPPCapabilitiesCoreDataStorage sharedInstance];
-    _xmppCapabilities = [[XMPPCapabilities alloc] initWithCapabilitiesStorage:_xmppCapabilitiesStorage];
-    _xmppCapabilities.autoFetchHashedCapabilities = YES;
-    _xmppCapabilities.autoFetchNonHashedCapabilities = NO;
+//    _xmppCapabilitiesStorage = [XMPPCapabilitiesCoreDataStorage sharedInstance];
+//    _xmppCapabilities = [[XMPPCapabilities alloc] initWithCapabilitiesStorage:_xmppCapabilitiesStorage];
+//    _xmppCapabilities.autoFetchHashedCapabilities = YES;
+//    _xmppCapabilities.autoFetchNonHashedCapabilities = NO;
 //
 //    // message
     _xmppMessageArchivingCoreDataStorage = [XMPPMessageArchivingCoreDataStorage sharedInstance];
@@ -91,7 +91,7 @@
     
     [_xmppStream addDelegate:self delegateQueue:dispatch_get_main_queue()];
     [_xmppRoster addDelegate:self delegateQueue:dispatch_get_main_queue()];
-    [_xmppCapabilities addDelegate:self delegateQueue:dispatch_get_main_queue()];
+//    [_xmppCapabilities addDelegate:self delegateQueue:dispatch_get_main_queue()];
     [_xmppMessageArchiving addDelegate:self delegateQueue:dispatch_get_main_queue()];
     
     _xmppFileTransfer = [[XMPPFileTransfer alloc]init];
@@ -108,7 +108,7 @@
     [_xmppRoster            activate:_xmppStream];
     [_xmppvCardTempModule   activate:_xmppStream];
 	[_xmppvCardAvatarModule activate:_xmppStream];
-	[_xmppCapabilities      activate:_xmppStream];
+//	[_xmppCapabilities      activate:_xmppStream];
     [_xmppMessageArchiving  activate:_xmppStream];
     
     allowSelfSignedCertificates = YES;
@@ -530,7 +530,6 @@
                 if (jid)
                 {
                     XMPPJID *xmppJID = [XMPPJID jidWithString:jid];
-                    NSLog(@"----xmppJID---%@",xmppJID.full);
                     if (_delegate && [_delegate respondsToSelector:@selector(YZXmppMgr:didReceiveJID:)])
                     {
                         [_delegate YZXmppMgr:self didReceiveJID:xmppJID];
@@ -624,14 +623,14 @@
 
 - (void)xmppRoster:(XMPPRoster *)sender didReceiveRosterItem:(DDXMLElement *)item
 {
-    NSLog(@"---%s-----%@",__FUNCTION__,item.description);
+//    NSLog(@"---%s-----%@",__FUNCTION__,item.description);
 }
 
 
 
 - (void)xmppStream:(XMPPStream *)sender didReceivePresence:(XMPPPresence *)presence
 {
-    NSLog(@"----presence---%@",presence.type);
+//    NSLog(@"----presence---%@",presence.type);
     
     if ( ![presence.from.user isEqualToString:sender.myJID.user])
     {
