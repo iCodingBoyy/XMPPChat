@@ -67,12 +67,11 @@ typedef  enum XMPP_FILE_TYPE
 
 @interface XMPPFileManager : XMPPModule
 @property (nonatomic, strong, readonly) NSMutableArray *fileQueueArray;
-
-// 目标方接收文件请求
-// 目标方拒绝文件请求
 @property (nonatomic, OBJ_WEAK) id<xmppFileMgrDelegate> delegate;
+
 - (void)sendReceiveFiletransferResponse:(XMPPIQ*)inIQ;
 - (void)sendRejectFileTransferResponse:(XMPPIQ*)inIQ;
+- (void)sendImagetoJID:(XMPPJID*)toJID imageName:(NSString*)imageName data:(NSData*)imageData mimeType:(NSString*)mimetype;
 @end
 
 
@@ -88,6 +87,9 @@ typedef  enum XMPP_FILE_TYPE
 @property (nonatomic, strong) GCDAsyncSocket *asyncSocket;
 @property (nonatomic, strong) xmppFileModel *fileModel;
 @property (nonatomic, OBJ_WEAK) id<xmppFileTransDelegate> delegate;
++ (void)initialize;
++ (NSArray*)proxyCandidates;
++ (void)setProxyCandidates:(NSArray*)candidates;
 
 - (id)initWithStream:(XMPPStream*)xmppStream xmppFile:(xmppFileModel*)file toJID:(XMPPJID*)jid;
 - (id)initWithStream:(XMPPStream *)xmppStream xmppFile:(xmppFileModel *)file iqRequest:(XMPPIQ*)inIQ;

@@ -20,7 +20,8 @@
 #import <XMPPMessageArchiving.h>
 #import <XMPPMessageDeliveryReceipts.h>
 
-#import "XMPPFileTransfer.h"
+#import "XMPPFileManager.h"
+
 
 #define KXMPPHostName @"www.savvy-tech.net"
 //#define KXMPPHostName @"mayuansusumutekimacbook-pro.local"
@@ -69,8 +70,7 @@ typedef void (^AuthError)(XMPPErrorCode errorCode);
 @property (nonatomic, strong, readonly) XMPPvCardCoreDataStorage *xmppvCardStorage;
 @property (nonatomic, strong, readonly) XMPPMessageArchivingCoreDataStorage *xmppMessageArchivingCoreDataStorage;
 @property (nonatomic, strong, readonly) XMPPMessageArchiving *xmppMessageArchiving;
-@property (nonatomic, strong, readonly) XMPPFileTransfer *xmppFileTransfer;
-
+@property (nonatomic, strong, readonly) XMPPFileManager *fileManager;
 
 @property (nonatomic, assign) XMPPOperation xmppOperation;
 @property (nonatomic, strong) NSData *sendData;

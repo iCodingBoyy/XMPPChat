@@ -14,7 +14,7 @@
 #define KXMPPLOGINPWD @"KXMPPLOGINPWD"
 
 
-@interface YZXMPPManager() <XMPPRosterDelegate,XMPPMessageArchivingStorage>
+@interface YZXMPPManager() <XMPPRosterDelegate,XMPPMessageArchivingStorage,xmppFileMgrDelegate>
 {
     BOOL allowSelfSignedCertificates;
 	BOOL allowSSLHostNameMismatch;
@@ -94,9 +94,10 @@
 //    [_xmppCapabilities addDelegate:self delegateQueue:dispatch_get_main_queue()];
     [_xmppMessageArchiving addDelegate:self delegateQueue:dispatch_get_main_queue()];
     
-    _xmppFileTransfer = [[XMPPFileTransfer alloc]init];
-    [_xmppFileTransfer addDelegate:self delegateQueue:dispatch_get_main_queue()];
-    [_xmppFileTransfer activate:_xmppStream];
+    _fileManager = [[XMPPFileManager alloc]init];
+    [_fileManager addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_fileManager setDelegate:self];
+    [_fileManager activate:_xmppStream];
     
 //    XMPPMessageDeliveryReceipts * deliveryReceiptsModule = [[XMPPMessageDeliveryReceipts alloc] init];
 //    deliveryReceiptsModule.autoSendMessageDeliveryRequests = YES;
@@ -128,7 +129,7 @@
     [_xmppvCardAvatarModule deactivate];
     [_xmppCapabilities deactivate];
     [_xmppMessageArchiving deactivate];
-    [_xmppFileTransfer deactivate];
+    [_fileManager deactivate];
     
     [_xmppStream disconnect];
     
@@ -142,7 +143,7 @@
     _xmppCapabilities = nil;
     _xmppCapabilitiesStorage = nil;
     _xmppMessageArchiving = nil;
-    _xmppFileTransfer = nil;
+    _fileManager = nil;
 }
 
 
@@ -547,10 +548,24 @@
     NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/Server",xmppUser,KXMPPHostName];
     NSString *fileName = [NSString stringWithFormat:@"photo%@.png",[_xmppStream generateUUID]];
     XMPPJID *senderJID = [XMPPJID jidWithString:xmppJIDString];
-    [_xmppFileTransfer initiateFileTransferTo:senderJID fileName:fileName fileData:data];
+    [_fileManager sendImagetoJID:senderJID imageName:fileName data:data mimeType:nil];
     return YES;
 }
 
+- (void)xmppFileMgr:(XMPPFileManager *)fileMgr didFailToSendFile:(xmppFileModel *)file error:(DDXMLElement *)error
+{
+    
+}
+
+- (void)xmppFileMgr:(XMPPFileManager *)fileMgr willReceiveFile:(xmppFileModel *)file
+{
+
+}
+
+- (void)xmppFileMgr:(XMPPFileManager *)fileMgr didReceiveFile:(xmppFileModel *)file
+{
+    
+}
 #pragma mark -
 #pragma mark 好友管理
 

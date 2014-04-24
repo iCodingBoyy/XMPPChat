@@ -72,7 +72,6 @@
 		6B6BF07518E967F800E05F5E /* user_image@2x.jpeg in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07418E967F800E05F5E /* user_image@2x.jpeg */; };
 		6B6BF07818E982ED00E05F5E /* delete_btn_nor@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07618E982ED00E05F5E /* delete_btn_nor@2x.png */; };
 		6B6BF07918E982ED00E05F5E /* delete_btn_press@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07718E982ED00E05F5E /* delete_btn_press@2x.png */; };
-		6B8F8A2918F4DE7600DBC675 /* XMPPFileTransfer.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2818F4DE7600DBC675 /* XMPPFileTransfer.m */; };
 		6B8F8A3018F52FE200DBC675 /* MKEntryPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2C18F52FE200DBC675 /* MKEntryPanel.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		6B8F8A3118F52FE200DBC675 /* MKEntryPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */; };
 		6B8F8A3218F52FE200DBC675 /* TopBar.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2E18F52FE200DBC675 /* TopBar.png */; };
@@ -82,12 +81,12 @@
 		6BB737B418ED50CF00F9B90A /* YZTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737B318ED50CF00F9B90A /* YZTextField.m */; };
 		6BDE825A18E51D7B00356E41 /* YZXMPPManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BDE825918E51D7B00356E41 /* YZXMPPManager.m */; };
 		6BECF9CE18F6803900A717C9 /* YZRecentChatListCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BECF9CD18F6803900A717C9 /* YZRecentChatListCell.m */; };
-		6BF6C1AE18FCDE4F00B31984 /* XMPPFileSKConnect.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BF6C1AD18FCDE4F00B31984 /* XMPPFileSKConnect.m */; };
 		6BFEB18A18EA70EC00D14B17 /* nav_bg_image_ios7@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6BFEB18818EA70EC00D14B17 /* nav_bg_image_ios7@2x.png */; };
 		6BFEB18B18EA70EC00D14B17 /* nav_bg_image@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6BFEB18918EA70EC00D14B17 /* nav_bg_image@2x.png */; };
 		6BFEB18E18EA789E00D14B17 /* account_add@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6BFEB18D18EA789E00D14B17 /* account_add@2x.png */; };
 		6BFEB19018EA7E6F00D14B17 /* avatar_default@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6BFEB18F18EA7E6F00D14B17 /* avatar_default@2x.png */; };
 		6BFEB19418EA97FC00D14B17 /* YZChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BFEB19318EA97FC00D14B17 /* YZChatViewController.m */; };
+		6BFF00F61907A96900D60B52 /* XMPPIMFileTransfer.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BFF00F51907A96900D60B52 /* XMPPIMFileTransfer.m */; };
 		7C215407EB924B078C7B0A30 /* libPods.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CC2AB08EB9AC420F9AFCF0D9 /* libPods.a */; };
 /* End PBXBuildFile section */
 
@@ -188,8 +187,6 @@
 		6B6BF07418E967F800E05F5E /* user_image@2x.jpeg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "user_image@2x.jpeg"; sourceTree = "<group>"; };
 		6B6BF07618E982ED00E05F5E /* delete_btn_nor@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "delete_btn_nor@2x.png"; sourceTree = "<group>"; };
 		6B6BF07718E982ED00E05F5E /* delete_btn_press@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "delete_btn_press@2x.png"; sourceTree = "<group>"; };
-		6B8F8A2718F4DE7600DBC675 /* XMPPFileTransfer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPFileTransfer.h; sourceTree = "<group>"; };
-		6B8F8A2818F4DE7600DBC675 /* XMPPFileTransfer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPFileTransfer.m; sourceTree = "<group>"; };
 		6B8F8A2B18F52FE200DBC675 /* MKEntryPanel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MKEntryPanel.h; sourceTree = "<group>"; };
 		6B8F8A2C18F52FE200DBC675 /* MKEntryPanel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MKEntryPanel.m; sourceTree = "<group>"; };
 		6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MKEntryPanel.xib; sourceTree = "<group>"; };
@@ -205,14 +202,14 @@
 		6BDE825918E51D7B00356E41 /* YZXMPPManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZXMPPManager.m; sourceTree = "<group>"; };
 		6BECF9CC18F6803900A717C9 /* YZRecentChatListCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZRecentChatListCell.h; sourceTree = "<group>"; };
 		6BECF9CD18F6803900A717C9 /* YZRecentChatListCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZRecentChatListCell.m; sourceTree = "<group>"; };
-		6BF6C1AC18FCDE4F00B31984 /* XMPPFileSKConnect.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPFileSKConnect.h; sourceTree = "<group>"; };
-		6BF6C1AD18FCDE4F00B31984 /* XMPPFileSKConnect.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPFileSKConnect.m; sourceTree = "<group>"; };
 		6BFEB18818EA70EC00D14B17 /* nav_bg_image_ios7@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "nav_bg_image_ios7@2x.png"; sourceTree = "<group>"; };
 		6BFEB18918EA70EC00D14B17 /* nav_bg_image@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "nav_bg_image@2x.png"; sourceTree = "<group>"; };
 		6BFEB18D18EA789E00D14B17 /* account_add@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "account_add@2x.png"; sourceTree = "<group>"; };
 		6BFEB18F18EA7E6F00D14B17 /* avatar_default@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "avatar_default@2x.png"; sourceTree = "<group>"; };
 		6BFEB19218EA97FC00D14B17 /* YZChatViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatViewController.h; sourceTree = "<group>"; };
 		6BFEB19318EA97FC00D14B17 /* YZChatViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatViewController.m; sourceTree = "<group>"; };
+		6BFF00F41907A96900D60B52 /* XMPPIMFileTransfer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPIMFileTransfer.h; sourceTree = "<group>"; };
+		6BFF00F51907A96900D60B52 /* XMPPIMFileTransfer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPIMFileTransfer.m; sourceTree = "<group>"; };
 		CC2AB08EB9AC420F9AFCF0D9 /* libPods.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPods.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -488,12 +485,10 @@
 				6B1814F319060E8C00443A2F /* CoreData */,
 				6BDE825818E51D7B00356E41 /* YZXMPPManager.h */,
 				6BDE825918E51D7B00356E41 /* YZXMPPManager.m */,
+				6BFF00F41907A96900D60B52 /* XMPPIMFileTransfer.h */,
+				6BFF00F51907A96900D60B52 /* XMPPIMFileTransfer.m */,
 				6B9D804A190526A7005D08B1 /* XMPPFileManager.h */,
 				6B9D804B190526A7005D08B1 /* XMPPFileManager.m */,
-				6B8F8A2718F4DE7600DBC675 /* XMPPFileTransfer.h */,
-				6B8F8A2818F4DE7600DBC675 /* XMPPFileTransfer.m */,
-				6BF6C1AC18FCDE4F00B31984 /* XMPPFileSKConnect.h */,
-				6BF6C1AD18FCDE4F00B31984 /* XMPPFileSKConnect.m */,
 				6BB737AC18ED188C00F9B90A /* NSObject+PropertyListing.h */,
 				6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */,
 			);
@@ -699,7 +694,6 @@
 				6B6BF07318E964DA00E05F5E /* LoginAndRegisterView.m in Sources */,
 				6BB737AE18ED188C00F9B90A /* NSObject+PropertyListing.m in Sources */,
 				6B4ED22B18EC130700E69BD1 /* YZChatContactCell.m in Sources */,
-				6BF6C1AE18FCDE4F00B31984 /* XMPPFileSKConnect.m in Sources */,
 				6B4ED22E18EC131D00E69BD1 /* YZChatLocationCell.m in Sources */,
 				6B6BF06418E9513F00E05F5E /* TPKeyboardAvoidingScrollView.m in Sources */,
 				6B13C38F18E51667002E3AF0 /* AppDelegate.m in Sources */,
@@ -707,8 +701,8 @@
 				6BECF9CE18F6803900A717C9 /* YZRecentChatListCell.m in Sources */,
 				6B4ED22818EC12F200E69BD1 /* YZChatVideoCell.m in Sources */,
 				6BFEB19418EA97FC00D14B17 /* YZChatViewController.m in Sources */,
+				6BFF00F61907A96900D60B52 /* XMPPIMFileTransfer.m in Sources */,
 				6B6BF03A18E9445E00E05F5E /* RosterViewController.m in Sources */,
-				6B8F8A2918F4DE7600DBC675 /* XMPPFileTransfer.m in Sources */,
 				6B13C38B18E51667002E3AF0 /* main.m in Sources */,
 				6B9D804C190526A7005D08B1 /* XMPPFileManager.m in Sources */,
 				6B6BF03D18E944B000E05F5E /* RecentMsgViewController.m in Sources */,

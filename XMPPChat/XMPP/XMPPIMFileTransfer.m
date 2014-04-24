@@ -1,437 +1,49 @@
 //
-//  XMPPFileManager.m
+//  XMPPIMFileTransfer.m
 //  XMPPChat
 //
-//  Created by 马远征 on 14-4-21.
+//  Created by 马远征 on 14-4-23.
 //  Copyright (c) 2014年 马远征. All rights reserved.
 //
 
-#import "XMPPFileManager.h"
+#import "XMPPIMFileTransfer.h"
 #import <NSXMLElement+XMPP.h>
 #import <NSData+XMPP.h>
 #import <NSNumber+XMPP.h>
 
-#pragma mark -////////////////////////////xmppFileModel///////////////////////////////////
+#pragma mark -
+#pragma mark XmppFileModel
+//////////////////////////////////////XmppFileModel//////////////////////////////////////////////
 
-@implementation xmppFileModel
-- (id)initWithXMPPIQ:(XMPPIQ*)inIQ
-{
-    self = [super init];
-    if (self)
-    {
-        _senderJID = inIQ.from;
-        _timeStamp = [NSDate date];
-        
-        NSXMLElement *si = [inIQ elementForName:@"si"];
-        NSXMLElement *file = [si elementForName:@"file"];
-        _uuid = [[inIQ attributeForName:@"id"]stringValue];
-        _mimeType = [[si elementForName:@"mime-type"]stringValue];
-        _fileName = [[file elementForName:@"name"]stringValue];
-        _fileSize = [[[file elementForName:@"size"]stringValue]integerValue];
-        _hashValue = [[file elementForName:@"hash"]stringValue];
-        _outGoing = NO;
-    }
-    return self;
-}
+@implementation XmppFileModel
 
 @end
 
 
-#pragma mark -////////////////////////////XMPPFileManager///////////////////////////////////
-
-@interface XMPPFileManager()
-{
-    
-}
-@property (nonatomic,strong) NSMutableArray *fileTransQueueArray;
-@end
-
-@implementation XMPPFileManager
-
 #pragma mark -
-#pragma mark init
+#pragma mark xmppSocksConnect
+//////////////////////////////////////xep-065 socks5协商//////////////////////////////////////////////
 
-- (id)init
+@interface xmppSocksConnect()
 {
-    return [self initWithDispatchQueue:NULL];
-}
-
-- (id)initWithDispatchQueue:(dispatch_queue_t)queue
-{
-    self = [super initWithDispatchQueue:queue];
-    if (self)
-    {
-        _fileQueueArray = [[NSMutableArray alloc]init];
-        _fileTransQueueArray = [[NSMutableArray alloc]init];
-    }
-    return self;
-}
-
-#pragma mark -
-#pragma mark active/deactive
-
-- (BOOL)activate:(XMPPStream *)aXmppStream
-{
-    if ([super activate:aXmppStream])
-    {
-        return YES;
-    }
-    return NO;
-}
-
-- (void)deactivate
-{
-    [super deactivate];
-}
-
-- (xmppFileModel*)fetchFileModelByUUID:(NSString*)uuid
-{
-    if ( !_fileQueueArray || _fileQueueArray.count <= 0 || uuid == nil)
-    {
-        return nil;
-    }
+    BOOL _isSendingFile;
+    NSString *_sid;
+    NSString *_discoUUID;
+    NSString *_uuid;
     
-    for (xmppFileModel *model in _fileQueueArray)
-    {
-        if ([model.uuid isEqualToString:uuid])
-        {
-            return model;
-        }
-    }
-    return nil;
-}
-
-- (void)sendImagetoJID:(XMPPJID*)toJID imageName:(NSString*)imageName data:(NSData*)imageData mimeType:(NSString*)mimetype
-{
-    xmppFileModel *fileModel = [[xmppFileModel alloc]init];
-    fileModel.fileName = imageName;
-    fileModel.dataBytes = imageData;
-    fileModel.fileSize = imageData.length;
-    fileModel.fileType = XMPP_FILE_IMAGE;
-    fileModel.uuid = [xmppStream generateUUID];
-    fileModel.senderJID = toJID;
-    fileModel.outGoing = YES;
-    fileModel.timeStamp = [NSDate date];
-    
-    [_fileQueueArray addObject:fileModel];
-    
-    NSString *fileSize = [NSString stringWithFormat:@"%ld",(unsigned long)imageData.length];
-    [self sendFileTransferRequest:toJID
-                         fileName:imageName
-                         fileSize:fileSize
-                         fileDesc:@"Sending"
-                         mimeType:@"image/png"
-                             hash:@"552da749930852c69ae5d2141d3766b1"
-                             date:@"1969-07-21T02:56:15Z"];
-}
-
-#pragma mark -
-#pragma mark XMPPStream Delegate
-
-- (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
-{
-    NSString *type = inIq.type;
-    if ([type isEqualToString:@"set"])
-    {
-        NSXMLElement *si = [inIq elementForName:@"si"];
-        if (si && [si.xmlns isEqualToString:@"http://jabber.org/protocol/si"])
-        {
-            NSXMLElement *file = [si elementForName:@"file"];
-            if ([file.xmlns isEqualToString:@"http://jabber.org/protocol/feature-neg"])
-            {
-                NSLog(@"---目标方收到%@文件传输请求--",inIq.from);
-                
-                xmppFileModel *fileModel = [[xmppFileModel alloc]initWithXMPPIQ:inIq];
-                [_fileQueueArray addObject:fileModel];
-                
-                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileMgr:willReceiveFile:)])
-                {
-                    [_delegate xmppFileMgr:self willReceiveFile:fileModel];
-                }
-                return YES;
-            }
-        }// if <si>
-    }
-    
-    if ([type isEqualToString:@"error"])
-    {
-        if (_delegate && [_delegate respondsToSelector:@selector(xmppFileMgr:didFailToSendFile:error:)])
-        {
-            NSString *iqID = [[inIq attributeForName:@"id"]stringValue];
-            xmppFileModel *fileModel = [self fetchFileModelByUUID:iqID];
-            NSXMLElement *error = [inIq elementForName:@"error"];
-            [_delegate xmppFileMgr:self didFailToSendFile:fileModel error:error];
-        }
-        return NO;
-    }
-    
-    if ([type isEqualToString:@"result"])
-    {
-        NSXMLElement *si = [inIq elementForName:@"si"];
-        if (si && [si.xmlns isEqualToString:@"http://jabber.org/protocol/si"])
-        {
-            NSXMLElement *feature = [si elementForName:@"feature"];
-            if (feature && [feature.xmlns isEqualToString:@"http://jabber.org/protocol/feature-neg"])
-            {
-                NSString *iqID = [[inIq attributeForName:@"id"]stringValue];
-                xmppFileModel *fileModel = [self fetchFileModelByUUID:iqID];
-                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileMgr:didSendFile:)])
-                {
-                    
-                    [_delegate xmppFileMgr:self didSendFile:fileModel];
-                }
-                
-                // 初始方进入xep-065协商
-                [XMPPFileTransfer initialize];
-                [XMPPFileTransfer setProxyCandidates:[NSArray arrayWithObjects:@"www.savvy-tech.net", nil]];
-                XMPPFileTransfer *fileTransfer = [[XMPPFileTransfer alloc]initWithStream:xmppStream xmppFile:fileModel toJID:inIq.from];
-                [fileTransfer startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
-                [_fileTransQueueArray addObject:fileTransfer];
-                return NO;
-            }
-        }//if <si>
-    }
-    return NO;
-}
-
-#pragma mark -
-#pragma mark XEP-096
-
-// 发送协商请求<请求发送文件>
-/*
- <iq type='set' id='offer1' to='receiver@jabber.org/resource'>
-    <si xmlns='http://jabber.org/protocol/si'
-        id='a0'
-        mime-type='text/plain'
-        profile='http://jabber.org/protocol/si/profile/file-transfer'>
-    <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
-          name='test.txt'
-          size='1022'/>
-    <feature xmlns='http://jabber.org/protocol/feature-neg'>
-        <x xmlns='jabber:x:data' type='form'>
-            <field var='stream-method' type='list-single'>
-                <option><value>http://jabber.org/protocol/bytestreams</value></option>
-                <option><value>http://jabber.org/protocol/ibb</value></option>
-            </field>
-        </x>
-    </feature>
-    </si>
- </iq>
- */
-/**
- * @method
- * @brief 发送请求传输文件，请求携带文件信息
- * @param  toJID 目标方JID
- * @param  fileName 待发送的文件名称{ eg. image.png }
- * @param  fileSize 待发送的文件大小
- * @param  fileDesc 待发送的文件描述
- * @param  mimetype MIME类型<具体可见常用MIME文件类型定义>
- * @param  hashValue 待发送文件的hash,用于校验文件的完整性
- * @param  fileDate 文件的最后修改日期。日期格式使用XMPP Date and Time Profiles指定的格式
- * @see
- * @warning toJID 必须是一个完整的fullJID，否则文件传输失败{myz00@www.savvy-tech.net/Server}
- * @exception
- * @discussion
- * @return
- */
-- (void)sendFileTransferRequest:(XMPPJID*)toJID
-                       fileName:(NSString*)fileName
-                       fileSize:(NSString*)fileSize
-                       fileDesc:(NSString*)fileDesc
-                       mimeType:(NSString*)mimeType
-                           hash:(NSString*)hashCode
-                           date:(NSString*)fileDate
-{
-    NSString *uuid = [xmppStream generateUUID];
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:uuid];
-    [iq addAttributeWithName:@"to" stringValue:toJID.full];
-    
-    NSXMLElement *si = [NSXMLElement elementWithName:@"si" xmlns:@"http://jabber.org/protocol/si"];
-    [si addAttributeWithName:@"id" stringValue:[xmppStream generateUUID]];
-    [si addAttributeWithName:@"mime-type" stringValue:mimeType];
-    [si addAttributeWithName:@"profile" stringValue:@"http://jabber.org/protocol/si/profile/file-transfer"];
-    [iq addChild:si];
-    
-    NSXMLElement *file = [NSXMLElement elementWithName:@"file" xmlns:@"http://jabber.org/protocol/si/profile/file-transfer"];
-    [file addAttributeWithName:@"name" stringValue:fileName];
-    [file addAttributeWithName:@"size" stringValue:fileSize];
-    [file addAttributeWithName:@"hash" stringValue:hashCode];
-    [file addAttributeWithName:@"date" stringValue:fileDate];
-    [si addChild:file];
-    
-    // 添加文件描述
-    NSXMLElement *desc = [NSXMLElement elementWithName:@"desc" stringValue:fileDesc];
-    [file addChild:desc];
-    
-    NSXMLElement *feature = [NSXMLElement elementWithName:@"feature" xmlns:@"http://jabber.org/protocol/feature-neg"];
-    [si addChild:feature];
-    
-    NSXMLElement *x = [NSXMLElement elementWithName:@"x" xmlns:@"jabber:x:data"];
-    [x addAttributeWithName:@"type" stringValue:@"form"];
-    [feature addChild:x];
-    
-    NSXMLElement *field = [NSXMLElement elementWithName:@"field"];
-    [field addAttributeWithName:@"var" stringValue:@"stream-method"];
-    [field addAttributeWithName:@"type" stringValue:@"list-single"];
-    [x addChild:field];
-    
-    NSXMLElement *option = [NSXMLElement elementWithName:@"option"];
-    [field addChild:option];
-    
-    NSXMLElement *value = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/bytestreams"];
-    [option addChild:value];
-    
-    NSXMLElement *option2 = [NSXMLElement elementWithName:@"option"];
-    [field addChild:option2];
-    
-    NSXMLElement *value2 = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/ibb"];
-    [option2 addChild:value2];
-    
-    [xmppStream sendElement:iq];
-}
-
-// 发送代理响应<接受文件传输>
-/*
- <iq type='result' to='sender@jabber.org/resource' id='offer1'>
-     <si xmlns='http://jabber.org/protocol/si'>
-         <feature xmlns='http://jabber.org/protocol/feature-neg'>
-             <x xmlns='jabber:x:data' type='submit'>
-                 <field var='stream-method'>
-                    <value>http://jabber.org/protocol/bytestreams</value>
-                 </field>
-             </x>
-         </feature>
-     </si>
- </iq>
- */
-/**
- * @method 目标方接收文件传输
- * @param  inIQ 目标方式收到的IQ请求
- * @return
- */
-- (void)sendReceiveFiletransferResponse:(XMPPIQ*)inIQ
-{
-    NSString *iqId = [inIQ attributeStringValueForName:@"id"];
-    
-    NSXMLElement *iq = [XMPPIQ iqWithType:@"result" elementID:iqId];
-    [iq addAttributeWithName:@"to" stringValue:inIQ.fromStr];
-    
-    NSXMLElement *si = [NSXMLElement elementWithName:@"si" xmlns:@"http://jabber.org/protocol/si"];
-    [iq addChild:si];
-    
-    NSXMLElement *file = [NSXMLElement elementWithName:@"file" xmlns:@"http://jabber.org/protocol/si/profile/file-transfer"];
-    [si addChild:file];
-    
-    NSXMLElement *feature = [NSXMLElement elementWithName:@"feature" xmlns:@"http://jabber.org/protocol/feature-neg"];
-    [si addChild:feature];
-    
-    NSXMLElement *x = [NSXMLElement elementWithName:@"x" xmlns:@"jabber:x:data"];
-    [x addAttributeWithName:@"type" stringValue:@"submit"];
-    [feature addChild:x];
-    
-    NSXMLElement *field = [NSXMLElement elementWithName:@"field"];
-    [field addAttributeWithName:@"var" stringValue:@"stream-method"];
-    [x addChild:field];
-    
-    NSXMLElement *value = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/bytestreams"];
-    [field addChild:value];
-    
-    [xmppStream sendElement:iq];
-    
-    // 进入xep-065协商阶段
-    xmppFileModel *fileModel = [self fetchFileModelByUUID:iqId];
-    if (_delegate && [_delegate respondsToSelector:@selector(xmppFileMgr:didReceiveFile:)])
-    {
-        [_delegate xmppFileMgr:self didReceiveFile:fileModel];
-    }
-    
-    [_fileQueueArray addObject:fileModel];
-    
-    // 目标方进入xep-065协商
-    XMPPFileTransfer *fileTrans = [[XMPPFileTransfer alloc]initWithStream:xmppStream xmppFile:fileModel iqRequest:inIQ];
-    [fileTrans startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
-    [_fileTransQueueArray addObject:fileTrans];
-}
-
-// 发送拒绝文件传输响应信息
-/*
- <iq id='' to='' from='' type='error'>
-     <error code='403' type='AUTH'>
-            <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
-     </error>
- </iq>
- */
-/**
- * @method 目标方拒绝文件传输
- * @param  inIQ 目标方式收到的IQ请求
- * @return
- */
-- (void)sendRejectFileTransferResponse:(XMPPIQ*)inIQ
-{
-    NSString *iqId = [inIQ attributeStringValueForName:@"id"];
-    
-    NSXMLElement *iq = [XMPPIQ iqWithType:@"error" elementID:iqId];
-    [iq addAttributeWithName:@"to" stringValue:inIQ.fromStr];
-    
-    NSXMLElement *error = [NSXMLElement elementWithName:@"error"];
-    [error addAttributeWithName:@"code" stringValue:@"403"];
-    [error addAttributeWithName:@"type" stringValue:@"AUTH"];
-    [iq addChild:error];
-    
-    NSXMLElement *forbidden = [NSXMLElement elementWithName:@"forbidden" xmlns:@"urn:ietf:params:xml:ns:xmpp-stanzas"];
-    [error addChild:forbidden];
-    
-    [xmppStream sendElement:iq];
-    
-    // 删除数据库的当前文件记录
-    if (_delegate && [_delegate respondsToSelector:@selector(xmppFileMgr:didRejectReceiveFile:)])
-    {
-        xmppFileModel *fileModel = [self fetchFileModelByUUID:iqId];
-        [_delegate xmppFileMgr:self didRejectReceiveFile:fileModel];
-    }
-}
-@end
-
-
-
-
-
-#pragma mark -////////////////////////////xmpp文件传输，包含xep-065协议///////////////////////////////////
-
-#define STATE_INIT                0
-
-#define STATE_PROXY_DISCO_0096   8
-#define STATE_PROXY_DISCO_EXTRA  9
-#define STATE_PROXY_DISCO_ITEMS  10
-#define STATE_PROXY_DISCO_INFO   11
-#define STATE_PROXY_DISCO_ADDR   12
-#define STATE_REQUEST_SENT       13
-#define STATE_INITIATOR_CONNECT  14
-#define STATE_ACTIVATE_SENT      15
-#define STATE_TARGET_CONNECT     20
-#define STATE_DONE               30
-#define STATE_FAILURE            31
-
-@interface XMPPFileTransfer()
-{
     dispatch_queue_t delegateQueue;
     dispatch_queue_t fileTransQueue;
-    
-    // gcd定时器
-    dispatch_source_t turnTimer;
-	dispatch_source_t discoTimer;
-    
-    NSDate *_startTime, *_finishTime;
-    
     void *fileTransQueueTag;
+    
+    dispatch_source_t turnTimer;
+    dispatch_source_t discoTimer;
+    
+    NSDate *_startTime,*_finishTime;
     
     XMPPJID  *_proxyJID;
     NSString *_proxyHost;
-    UInt16    _proxyPort;
+    UInt16   _proxyPort;
     
-    int state;
-    
-    // 存储目标方获取的IP和端口
     NSMutableArray *_streamHostArray;
     NSMutableArray *_proxyJIDsArray;
     NSArray *_proxyURLArray;
@@ -443,15 +55,11 @@
 @property (nonatomic, strong) XMPPStream *xmppStream;
 @property (nonatomic, strong) XMPPJID *receiverJID;
 @property (nonatomic, strong) XMPPJID *senderJID;
-@property (nonatomic, assign) BOOL isSendingFile;
-@property (nonatomic, strong) NSString *sid;
-@property (nonatomic, strong) NSString *discoUUID;
 @end
 
-@implementation XMPPFileTransfer
-
+@implementation xmppSocksConnect
+static NSMutableDictionary *existingTurnSockets;
 static NSMutableArray *proxyCandidates;
-
 #pragma mark -
 #pragma mark proxyCandidates
 
@@ -461,6 +69,7 @@ static NSMutableArray *proxyCandidates;
     if (!initialized)
     {
         initialized = YES;
+        existingTurnSockets = [[NSMutableDictionary alloc] init];
         proxyCandidates = [[NSMutableArray alloc] initWithObjects:@"jabber.org", nil];
     }
 }
@@ -484,32 +93,31 @@ static NSMutableArray *proxyCandidates;
     }
 }
 
-
++ (BOOL)isNewStartSocksRequest:(XMPPIQ*)inIQ
+{
+    NSString *uuid = [inIQ elementID];
+    @synchronized(existingTurnSockets)
+    {
+        if ([existingTurnSockets objectForKey:uuid])
+            return NO;
+        else
+            return YES;
+    }
+}
 #pragma mark -
 #pragma mark init
 
-- (id)init
-{
-    self = [super init];
-    if (self)
-    {
-        
-    }
-    return self;
-}
-
-- (id)initWithStream:(XMPPStream *)xmppStream xmppFile:(xmppFileModel *)file toJID:(XMPPJID *)jid
+- (id)initWithStream:(XMPPStream *)xmppStream toJID:(XMPPJID *)jid
 {
     self = [super init];
     if (self)
     {
         _xmppStream = xmppStream;
-        _fileModel = file;
         _isSendingFile = YES;
         _receiverJID = jid;
         _sid = [_xmppStream generateUUID];
+         _uuid = [xmppStream generateUUID];
         
-        // 数组中的每一个代理proxy都将被查询是否能用作代理
         _proxyURLArray = [[self class]proxyCandidates];
         _streamHostArray = [[NSMutableArray alloc]initWithCapacity:_proxyURLArray.count];
         
@@ -518,15 +126,15 @@ static NSMutableArray *proxyCandidates;
     return self;
 }
 
-- (id)initWithStream:(XMPPStream *)xmppStream xmppFile:(xmppFileModel *)file iqRequest:(XMPPIQ *)inIQ
+- (id)initWithStream:(XMPPStream *)xmppStream inIQRequest:(XMPPIQ *)inIQ
 {
     self = [super init];
     if (self)
     {
         _xmppStream = xmppStream;
-        _fileModel = file;
         _isSendingFile = NO;
         _senderJID = inIQ.from;
+        _uuid = [[inIQ elementID] copy];
         
         [self performPostInitSetup];
     }
@@ -538,13 +146,14 @@ static NSMutableArray *proxyCandidates;
     fileTransQueue = dispatch_queue_create("TURNSocket", NULL);
 	fileTransQueueTag = &fileTransQueueTag;
 	dispatch_queue_set_specific(fileTransQueue, fileTransQueueTag, fileTransQueueTag, NULL);
+    @synchronized(existingTurnSockets)
+	{
+		[existingTurnSockets setObject:self forKey:_uuid];
+	}
 }
 
 - (void)startWithDelegate:(id)aDelegate delegateQueue:(dispatch_queue_t)aDelegateQueue
 {
-    NSParameterAssert(aDelegate != nil);
-    NSParameterAssert(aDelegateQueue != NULL);
-    
     dispatch_async(fileTransQueue, ^{ @autoreleasepool {
         
         _delegate = aDelegate;
@@ -557,18 +166,17 @@ static NSMutableArray *proxyCandidates;
         
         _startTime = [[NSDate alloc] init];
         
+        // 超时定时器
         turnTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, fileTransQueue);
-		
 		dispatch_source_set_event_handler(turnTimer, ^{ @autoreleasepool {
-			
-//			[self doTotalTimeout];
+            
+            [self fail];
 			
 		}});
-		
 		dispatch_time_t tt = dispatch_time(DISPATCH_TIME_NOW, (8000.00 * NSEC_PER_SEC));
-		
 		dispatch_source_set_timer(turnTimer, tt, DISPATCH_TIME_FOREVER, 0.1);
 		dispatch_resume(turnTimer);
+        
 		
 		if (_isSendingFile)
         {
@@ -578,13 +186,20 @@ static NSMutableArray *proxyCandidates;
             // 等待目标方应答服务发现请求超时则失败
             [self setUpBSSupportQueryTimer];
         }
-
     }});
 }
 
 
 #pragma mark -
 #pragma mark gcd 定时器
+
+- (void)cancelTimer
+{
+    if (discoTimer)
+    {
+        dispatch_source_cancel(discoTimer);
+    }
+}
 
 - (void)setUpDispatchTimer:(dispatch_source_t)timer timeout:(NSTimeInterval)timeout
 {
@@ -622,14 +237,23 @@ static NSMutableArray *proxyCandidates;
 - (BOOL)queryNextProxyURL
 {
     XMPPJID *proxyUrlJID = nil;
-    while (proxyUrlJID == nil &&  ++ _proxyURLIndex < _proxyURLArray.count)
+    if (_streamHostArray.count < 2)
     {
-        NSString *candidateUrl = [_proxyURLArray objectAtIndex:_proxyURLIndex];
-        proxyUrlJID = [XMPPJID jidWithString:candidateUrl];
+        while (proxyUrlJID == nil &&  ++ _proxyURLIndex < _proxyURLArray.count)
+        {
+            NSString *candidateUrl = [_proxyURLArray objectAtIndex:_proxyURLIndex];
+            proxyUrlJID = [XMPPJID jidWithString:candidateUrl];
+        }
     }
     
     if (proxyUrlJID)
     {
+        // 等待服务器响应超时
+        [self setUpDispatchTimer:discoTimer timeout:8.0];
+        dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
+            
+                [self queryNextProxyURL];
+        }});
         return [self sendfetchProxyServerRequest:proxyUrlJID];
     }
     else
@@ -675,7 +299,7 @@ static NSMutableArray *proxyCandidates;
     
     _proxyJIDIndex = -1;
     return [self queryNextProxyJID];
-
+    
 }
 
 - (BOOL)queryNextProxyJID
@@ -684,6 +308,12 @@ static NSMutableArray *proxyCandidates;
     if (_proxyJIDIndex < _proxyJIDsArray.count)
     {
         XMPPJID *proxyJID = [_proxyJIDsArray objectAtIndex:_proxyJIDIndex];
+        [self setUpDispatchTimer:discoTimer timeout:8.0];
+        dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
+            
+            [self queryNextProxyURL];
+        }});
+        
         return [self sendServiceDiscoRequest:proxyJID];
     }
     else
@@ -762,7 +392,7 @@ static NSMutableArray *proxyCandidates;
     {
         if ([inIQ.elementID isEqualToString:@"activate"])
         {
-            [self startFileTransferBySocks5];
+            [self succeed];
             return NO;
         }
         NSXMLElement *query = [inIQ elementForName:@"query"];
@@ -770,6 +400,7 @@ static NSMutableArray *proxyCandidates;
         {
             if ([_discoUUID isEqualToString:inIQ.elementID])
             {
+                [self cancelTimer];
                 DEBUG_METHOD(@"初始方收到目标方应答服务发现请求");
                 _proxyURLIndex = -1;
                 return [self queryNextProxyURL];
@@ -778,6 +409,8 @@ static NSMutableArray *proxyCandidates;
             if ([inIQ.elementID isEqualToString:@"proxy_info"])
             {
                 DEBUG_METHOD(@"初服务器响应服务发现请求--返回是否能够代理");
+                [self cancelTimer];
+                
                 NSArray *identities = [query elementsForName:@"identity"];
                 BOOL found = NO;
                 for (int i= 0; i < identities.count && !found; i++)
@@ -795,6 +428,11 @@ static NSMutableArray *proxyCandidates;
                 if (found)
                 {
                     DEBUG_METHOD(@"---查询网络地址---");
+                    [self setUpDispatchTimer:discoTimer timeout:8.0];
+                    dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
+                        [self queryNextProxyURL];
+                    }});
+
                     return [self sendQueryNetworkAddressRequest:proxyJID];
                 }
                 else
@@ -818,6 +456,7 @@ static NSMutableArray *proxyCandidates;
             if ([inIQ.elementID isEqualToString:@"server_items"])
             {
                 DEBUG_STR(@"--服务器应答返回代理item--");
+                [self cancelTimer];
                 NSArray *itemsArray = (NSArray*)[query elementsForName:@"item"];
                 return [self queryProxyJID:itemsArray];
             }//if<ele--ID>
@@ -827,6 +466,7 @@ static NSMutableArray *proxyCandidates;
         {
             if ([inIQ.elementID isEqualToString:@"discover"])
             {
+                [self cancelTimer];
                 DEBUG_STR(@"--服务器应答返回网络地址--");
                 NSXMLElement *streamhost = [query elementForName:@"streamhost"];
                 NSString *jid = [[streamhost attributeForName:@"jid"]stringValue];
@@ -873,7 +513,7 @@ static NSMutableArray *proxyCandidates;
                         {
                             DEBUG_STR(@"--初始方建立socket连接失败--");
                             [self fail];
-                             return NO;
+                            return NO;
                         }
                         else
                         {
@@ -892,16 +532,17 @@ static NSMutableArray *proxyCandidates;
     return YES;
 }
 
+
 #pragma mark -
 #pragma mark XEP-065协商
 //////////////////////////////////////////// 初始方查询目标方是否支持字节流//////////////////////////////////////////////////////////////////////
 // 初始方发送服务发现请求给目标方
 /*
  <iq type='get'
-     from='initiator@example.com/foo'
-     to='target@example.org/bar'
-     id='hello'>
-    <query xmlns='http://jabber.org/protocol/disco#info'/>
+ from='initiator@example.com/foo'
+ to='target@example.org/bar'
+ id='hello'>
+ <query xmlns='http://jabber.org/protocol/disco#info'/>
  </iq>
  */
 - (BOOL)sendByteStreamsSupportQueryRequest:(XMPPJID*)toJId
@@ -919,17 +560,17 @@ static NSMutableArray *proxyCandidates;
 // 目标方应答服务发现请求
 /*
  <iq type='result'
-     from='target@example.org/bar'
-     to='initiator@example.com/foo'
-     id='hello'>
-    <query xmlns='http://jabber.org/protocol/disco#info'>
-        <identity category='proxy'
-                  type='bytestreams'
-                  name='SOCKS5 Bytestreams Service'/>
-                    ...
-        <feature var='http://jabber.org/protocol/bytestreams'/>
-        ...
-    </query>
+ from='target@example.org/bar'
+ to='initiator@example.com/foo'
+ id='hello'>
+ <query xmlns='http://jabber.org/protocol/disco#info'>
+ <identity category='proxy'
+ type='bytestreams'
+ name='SOCKS5 Bytestreams Service'/>
+ ...
+ <feature var='http://jabber.org/protocol/bytestreams'/>
+ ...
+ </query>
  </iq>
  */
 - (BOOL)sendByteStreamsSupportReponse:(XMPPIQ*)inIQ
@@ -986,24 +627,24 @@ static NSMutableArray *proxyCandidates;
 // 初始方发送服务发现请求给服务器
 /*
  <iq type='get'
-     from='initiator@example.com/foo'
-     to='example.com'
-     id='server_items'>
-    <query xmlns='http://jabber.org/protocol/disco#items'/>
+ from='initiator@example.com/foo'
+ to='example.com'
+ id='server_items'>
+ <query xmlns='http://jabber.org/protocol/disco#items'/>
  </iq>
  */
 
 //  服务器应答服务发现请求
 /*
  <iq type='result'
-     from='example.com'
-     to='initiator@example.com/foo'
-     id='server_items'>
-    <query xmlns='http://jabber.org/protocol/disco#items'>
-    ...
-    <item jid='streamhostproxy.example.net' name='Bytestreams Proxy'/>
-    ...
-    </query>
+ from='example.com'
+ to='initiator@example.com/foo'
+ id='server_items'>
+ <query xmlns='http://jabber.org/protocol/disco#items'>
+ ...
+ <item jid='streamhostproxy.example.net' name='Bytestreams Proxy'/>
+ ...
+ </query>
  </iq>
  */
 - (BOOL)sendfetchProxyServerRequest:(XMPPJID*)proxyUrlJID
@@ -1023,28 +664,28 @@ static NSMutableArray *proxyCandidates;
 // 初始方发送服务发现请求给代理
 /*
  <iq type='get'
-     from='initiator@example.com/foo'
-     to='streamhostproxy.example.net'
-     id='proxy_info'>
-    <query xmlns='http://jabber.org/protocol/disco#info'/>
+ from='initiator@example.com/foo'
+ to='streamhostproxy.example.net'
+ id='proxy_info'>
+ <query xmlns='http://jabber.org/protocol/disco#info'/>
  </iq>
  */
 
 // 服务器响应服务发现请求
 /*
  <iq type='result'
-     from='streamhostproxy.example.net'
-     to='initiator@example.com/foo'
-     id='proxy_info'>
-    <query xmlns='http://jabber.org/protocol/disco#info'>
-    ...
-    <identity category='proxy'
-              type='bytestreams'
-              name='SOCKS5 Bytestreams Service'/>
-    ...
-    <feature var='http://jabber.org/protocol/bytestreams'/>
-    ...
-    </query>
+ from='streamhostproxy.example.net'
+ to='initiator@example.com/foo'
+ id='proxy_info'>
+ <query xmlns='http://jabber.org/protocol/disco#info'>
+ ...
+ <identity category='proxy'
+ type='bytestreams'
+ name='SOCKS5 Bytestreams Service'/>
+ ...
+ <feature var='http://jabber.org/protocol/bytestreams'/>
+ ...
+ </query>
  </iq>
  */
 - (BOOL)sendServiceDiscoRequest:(XMPPJID*)jid
@@ -1063,9 +704,9 @@ static NSMutableArray *proxyCandidates;
 // 初始方从代理方那里请求网络地址
 /*
  <iq type='get'
-     from='initiator@example.com/foo'
-     to='streamhostproxy.example.net'
-     id='discover'>
+ from='initiator@example.com/foo'
+ to='streamhostproxy.example.net'
+ id='discover'>
  <query xmlns='http://jabber.org/protocol/bytestreams'/>
  </iq>
  */
@@ -1073,39 +714,39 @@ static NSMutableArray *proxyCandidates;
 //  代理通知初始方网络地址
 /*
  <iq type='result'
-     from='streamhostproxy.example.net'
-     to='initiator@example.com/foo'
-     id='discover'>
-    <query xmlns='http://jabber.org/protocol/bytestreams'>
-    <streamhost jid='streamhostproxy.example.net'
-                host='24.24.24.1'
-                zeroconf='_jabber.bytestreams'/>
-    </query>
+ from='streamhostproxy.example.net'
+ to='initiator@example.com/foo'
+ id='discover'>
+ <query xmlns='http://jabber.org/protocol/bytestreams'>
+ <streamhost jid='streamhostproxy.example.net'
+ host='24.24.24.1'
+ zeroconf='_jabber.bytestreams'/>
+ </query>
  </iq>
  */
 // 代理返回错误给初始方 <不能初始流字节>
 /*
  <iq type='error'
-     from='initiator@example.com/foo'
-     to='streamhostproxy.example.net'
-     id='discover'>
-     <query xmlns='http://jabber.org/protocol/bytestreams'/>
-        <error code='403' type='auth'>
-            <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
-        </error>
+ from='initiator@example.com/foo'
+ to='streamhostproxy.example.net'
+ id='discover'>
+ <query xmlns='http://jabber.org/protocol/bytestreams'/>
+ <error code='403' type='auth'>
+ <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+ </error>
  </iq>
  */
 
 // 代理返回错误给初始方 <不能作为流主机>
 /*
  <iq type='error'
-     from='initiator@example.com/foo'
-     to='streamhostproxy.example.net'
-     id='discover'>
-    <query xmlns='http://jabber.org/protocol/bytestreams'/>
-    <error code='405' type='cancel'>
-        <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
-    </error>
+ from='initiator@example.com/foo'
+ to='streamhostproxy.example.net'
+ id='discover'>
+ <query xmlns='http://jabber.org/protocol/bytestreams'/>
+ <error code='405' type='cancel'>
+ <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/>
+ </error>
  </iq>
  */
 - (BOOL)sendQueryNetworkAddressRequest:(XMPPJID*)hostJID
@@ -1122,11 +763,11 @@ static NSMutableArray *proxyCandidates;
 // 交互的初始化<初始方提供关于流主机的网络地址给目标方>
 /*
  <iq type='set'
-        from='initiator@example.com/foo'
-        to='target@example.org/bar'
-        id='initiate'>
+     from='initiator@example.com/foo'
+     to='target@example.org/bar'
+     id='initiate'>
     <query xmlns='http://jabber.org/protocol/bytestreams'
-            sid='mySID'
+           sid='mySID'
             mode='tcp'>
     <streamhost jid='initiator@example.com/foo'
                 host='192.168.4.1'
@@ -1152,24 +793,6 @@ static NSMutableArray *proxyCandidates;
     [_xmppStream sendElement:iq];
     return YES;
 }
-/*
-- (BOOL)sendNetworkAddress:(XMPPJID*)proxyjid host:(NSString*)host port:(NSString*)port
-{
-    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" to:_receiverJID elementID:@"initiate"];
-    NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/bytestreams"];
-    [query addAttributeWithName:@"sid" stringValue:_sid];
-    [query addAttributeWithName:@"mode" stringValue:@"tcp"];
-    [iq addChild:query];
-    
-    NSXMLElement *streamhost = [NSXMLElement elementWithName:@"streamhost"];
-    [streamhost addAttributeWithName:@"jid" stringValue:proxyjid.full];
-    [streamhost addAttributeWithName:@"host" stringValue:host];
-    [streamhost addAttributeWithName:@"port" stringValue:port];
-    [query addChild:streamhost];
-    [_xmppStream sendElement:iq];
-    return YES;
-}
-*/
 
 // 目标方拒绝字节流
 /*
@@ -1225,7 +848,6 @@ static NSMutableArray *proxyCandidates;
     [_xmppStream sendElement:iq];
     return YES;
 }
-
 //////////////////////////////////////////// 目标方确认SOCKS5连接//////////////////////////////////////////////////////////////////////
 // 目标方通知初始方关于连接的信息
 /*
@@ -1234,7 +856,7 @@ static NSMutableArray *proxyCandidates;
      to='initiator@example.com/foo'
      id='initiate'>
     <query xmlns='http://jabber.org/protocol/bytestreams'>
-    <streamhost-used jid='streamhostproxy.example.net'/>
+        <streamhost-used jid='streamhostproxy.example.net'/>
     </query>
  </iq>
  */
@@ -1281,26 +903,13 @@ static NSMutableArray *proxyCandidates;
     
     NSXMLElement *activate = [NSXMLElement elementWithName:@"activate" stringValue:jid.full];
     [query addChild:activate];
-
+    
     [_xmppStream sendElement:iq];
     return YES;
 }
 
-
 #pragma mark -
 #pragma mark GCDAsyncSocket
-
-- (void)startFileTransferBySocks5
-{
-    if (_isSendingFile)
-    {
-        
-    }
-    else
-    {
-        
-    }
-}
 
 - (void)socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(uint16_t)port
 {
@@ -1375,11 +984,11 @@ static NSMutableArray *proxyCandidates;
 		{
             DEBUG_METHOD(@"-----成功连接流主机---");
             [self sendinitiateSocket5Finished:_senderJID hostJID:_proxyJID];
-            // 目标方等待接收数据
-            [self startFileTransferBySocks5];
+            [self succeed];
 		}
 	}
 }
+
 
 #pragma mark -
 #pragma mark SOCKS
@@ -1543,8 +1152,6 @@ static NSMutableArray *proxyCandidates;
 	
 	[_asyncSocket readDataToLength:5 withTimeout:5.0 tag:103];
 }
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
 #pragma mark Finish and Cleanup
@@ -1552,26 +1159,16 @@ static NSMutableArray *proxyCandidates;
 - (void)succeed
 {
 	NSAssert(dispatch_get_specific(fileTransQueueTag), @"Invoked on incorrect queue");
-
+    
 	_finishTime = [[NSDate alloc] init];
 	
 	dispatch_async(delegateQueue, ^{ @autoreleasepool {
 		
-        if (_isSendingFile)
+        if (_delegate && [_delegate respondsToSelector:@selector(xmppSocksDidFail:)])
         {
-            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTransfer:didSuccessSendFile:)])
-            {
-                [_delegate xmppFileTransfer:self didSuccessSendFile:_fileModel];
-            }
+            [_delegate xmppSocksDidFail:self];
         }
-        else
-        {
-            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTransfer:didSuccessReceiveFile:)])
-            {
-                [_delegate xmppFileTransfer:self didSuccessReceiveFile:_fileModel];
-            }
-        }
-	}});
+    }});
 	
 	[self cleanup];
 }
@@ -1585,21 +1182,11 @@ static NSMutableArray *proxyCandidates;
 	
 	dispatch_async(delegateQueue, ^{ @autoreleasepool {
 		
-        if (_isSendingFile)
+        if (_delegate && [_delegate respondsToSelector:@selector(xmppSocks:didSucceed:)])
         {
-            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTransfer:didFailSendFile:)])
-            {
-                [_delegate xmppFileTransfer:self didFailSendFile:_fileModel];
-            }
+            [_delegate xmppSocks:self didSucceed:_asyncSocket];
         }
-        else
-        {
-            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTransfer:didFailReceiveFile:)])
-            {
-                [_delegate xmppFileTransfer:self didFailReceiveFile:_fileModel];
-            }
-        }
-	}});
+    }});
 	
 	[self cleanup];
 }
@@ -1607,7 +1194,7 @@ static NSMutableArray *proxyCandidates;
 - (void)abort
 {
 	dispatch_block_t block = ^{ @autoreleasepool {
-			[self cleanup];
+        [self cleanup];
 	}};
 	
 	if (dispatch_get_specific(fileTransQueueTag))
@@ -1642,16 +1229,16 @@ static NSMutableArray *proxyCandidates;
     [self releaseDispatchSource:turnTimer flag:YES];
 	[self releaseDispatchSource:discoTimer flag:YES];
 	[_xmppStream removeDelegate:self delegateQueue:fileTransQueue];
+    
+    @synchronized(existingTurnSockets)
+	{
+		[existingTurnSockets removeObjectForKey:_uuid];
+	}
 }
 
 
 - (void)dealloc
 {
-	if ((state > STATE_INIT) && (state < STATE_DONE))
-	{
-		
-	}
-    
 	[self releaseDispatchSource:turnTimer flag:YES];
     [self releaseDispatchSource:discoTimer flag:YES];
     
@@ -1671,4 +1258,262 @@ static NSMutableArray *proxyCandidates;
 	}
 }
 
+@end
+
+
+#pragma mark -
+#pragma mark XMPPFileTransfer
+//////////////////////////////////////xep-096 文件传输//////////////////////////////////////////////
+@interface XMPPFileTransfer()
+@property (nonatomic, strong) XMPPStream *xmppStream;
+@end
+@implementation XMPPFileTransfer
+
+- (id)initWithStream:(XMPPStream *)xmppStream toJID:(XMPPJID *)jid
+{
+    self = [super init];
+    if (self)
+    {
+        _xmppStream = xmppStream;
+    }
+    return self;
+}
+
+- (id)initWithStream:(XMPPStream *)xmppStream inIQRequest:(XMPPIQ *)inIQ
+{
+    self = [super init];
+    if (self)
+    {
+        _xmppStream = xmppStream;
+    }
+    return self;
+}
+
+- (void)startWithDelegate:(id)aDelegate delegateQueue:(dispatch_queue_t)aDelegateQueue
+{
+    _delegate = aDelegate;
+}
+
+#pragma mark -
+#pragma mark XEP-096
+
+// 发送协商请求<请求发送文件>
+/*
+ <iq type='set' id='offer1' to='receiver@jabber.org/resource'>
+ <si xmlns='http://jabber.org/protocol/si'
+ id='a0'
+ mime-type='text/plain'
+ profile='http://jabber.org/protocol/si/profile/file-transfer'>
+ <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
+ name='test.txt'
+ size='1022'/>
+ <feature xmlns='http://jabber.org/protocol/feature-neg'>
+ <x xmlns='jabber:x:data' type='form'>
+ <field var='stream-method' type='list-single'>
+ <option><value>http://jabber.org/protocol/bytestreams</value></option>
+ <option><value>http://jabber.org/protocol/ibb</value></option>
+ </field>
+ </x>
+ </feature>
+ </si>
+ </iq>
+ */
+/**
+ * @method
+ * @brief 发送请求传输文件，请求携带文件信息
+ * @param  toJID 目标方JID
+ * @param  fileName 待发送的文件名称{ eg. image.png }
+ * @param  fileSize 待发送的文件大小
+ * @param  fileDesc 待发送的文件描述
+ * @param  mimetype MIME类型<具体可见常用MIME文件类型定义>
+ * @param  hashValue 待发送文件的hash,用于校验文件的完整性
+ * @param  fileDate 文件的最后修改日期。日期格式使用XMPP Date and Time Profiles指定的格式
+ * @see
+ * @warning toJID 必须是一个完整的fullJID，否则文件传输失败{myz00@www.savvy-tech.net/Server}
+ * @exception
+ * @discussion
+ * @return
+ */
+- (void)sendFileTransferRequest:(XMPPJID*)toJID
+                       fileName:(NSString*)fileName
+                       fileSize:(NSString*)fileSize
+                       fileDesc:(NSString*)fileDesc
+                       mimeType:(NSString*)mimeType
+                           hash:(NSString*)hashCode
+                           date:(NSString*)fileDate
+{
+    NSString *uuid = [_xmppStream generateUUID];
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:uuid];
+    [iq addAttributeWithName:@"to" stringValue:toJID.full];
+    
+    NSXMLElement *si = [NSXMLElement elementWithName:@"si" xmlns:@"http://jabber.org/protocol/si"];
+    [si addAttributeWithName:@"id" stringValue:[_xmppStream generateUUID]];
+    [si addAttributeWithName:@"mime-type" stringValue:mimeType];
+    [si addAttributeWithName:@"profile" stringValue:@"http://jabber.org/protocol/si/profile/file-transfer"];
+    [iq addChild:si];
+    
+    NSXMLElement *file = [NSXMLElement elementWithName:@"file" xmlns:@"http://jabber.org/protocol/si/profile/file-transfer"];
+    [file addAttributeWithName:@"name" stringValue:fileName];
+    [file addAttributeWithName:@"size" stringValue:fileSize];
+    [file addAttributeWithName:@"hash" stringValue:hashCode];
+    [file addAttributeWithName:@"date" stringValue:fileDate];
+    [si addChild:file];
+    
+    // 添加文件描述
+    NSXMLElement *desc = [NSXMLElement elementWithName:@"desc" stringValue:fileDesc];
+    [file addChild:desc];
+    
+    NSXMLElement *feature = [NSXMLElement elementWithName:@"feature" xmlns:@"http://jabber.org/protocol/feature-neg"];
+    [si addChild:feature];
+    
+    NSXMLElement *x = [NSXMLElement elementWithName:@"x" xmlns:@"jabber:x:data"];
+    [x addAttributeWithName:@"type" stringValue:@"form"];
+    [feature addChild:x];
+    
+    NSXMLElement *field = [NSXMLElement elementWithName:@"field"];
+    [field addAttributeWithName:@"var" stringValue:@"stream-method"];
+    [field addAttributeWithName:@"type" stringValue:@"list-single"];
+    [x addChild:field];
+    
+    NSXMLElement *option = [NSXMLElement elementWithName:@"option"];
+    [field addChild:option];
+    
+    NSXMLElement *value = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/bytestreams"];
+    [option addChild:value];
+    
+    NSXMLElement *option2 = [NSXMLElement elementWithName:@"option"];
+    [field addChild:option2];
+    
+    NSXMLElement *value2 = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/ibb"];
+    [option2 addChild:value2];
+    
+    [_xmppStream sendElement:iq];
+}
+
+// 发送代理响应<接受文件传输>
+/*
+ <iq type='result' to='sender@jabber.org/resource' id='offer1'>
+ <si xmlns='http://jabber.org/protocol/si'>
+ <feature xmlns='http://jabber.org/protocol/feature-neg'>
+ <x xmlns='jabber:x:data' type='submit'>
+ <field var='stream-method'>
+ <value>http://jabber.org/protocol/bytestreams</value>
+ </field>
+ </x>
+ </feature>
+ </si>
+ </iq>
+ */
+/**
+ * @method 目标方接收文件传输
+ * @param  inIQ 目标方式收到的IQ请求
+ * @return
+ */
+- (void)sendReceiveFiletransferResponse:(XMPPIQ*)inIQ
+{
+    NSString *iqId = [inIQ attributeStringValueForName:@"id"];
+    
+    NSXMLElement *iq = [XMPPIQ iqWithType:@"result" elementID:iqId];
+    [iq addAttributeWithName:@"to" stringValue:inIQ.fromStr];
+    
+    NSXMLElement *si = [NSXMLElement elementWithName:@"si" xmlns:@"http://jabber.org/protocol/si"];
+    [iq addChild:si];
+    
+    NSXMLElement *file = [NSXMLElement elementWithName:@"file" xmlns:@"http://jabber.org/protocol/si/profile/file-transfer"];
+    [si addChild:file];
+    
+    NSXMLElement *feature = [NSXMLElement elementWithName:@"feature" xmlns:@"http://jabber.org/protocol/feature-neg"];
+    [si addChild:feature];
+    
+    NSXMLElement *x = [NSXMLElement elementWithName:@"x" xmlns:@"jabber:x:data"];
+    [x addAttributeWithName:@"type" stringValue:@"submit"];
+    [feature addChild:x];
+    
+    NSXMLElement *field = [NSXMLElement elementWithName:@"field"];
+    [field addAttributeWithName:@"var" stringValue:@"stream-method"];
+    [x addChild:field];
+    
+    NSXMLElement *value = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/bytestreams"];
+    [field addChild:value];
+    
+    [_xmppStream sendElement:iq];
+    
+    // 进入xep-065协商阶段
+}
+
+// 发送拒绝文件传输响应信息
+/*
+ <iq id='' to='' from='' type='error'>
+ <error code='403' type='AUTH'>
+ <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
+ </error>
+ </iq>
+ */
+/**
+ * @method 目标方拒绝文件传输
+ * @param  inIQ 目标方式收到的IQ请求
+ * @return
+ */
+- (void)sendRejectFileTransferResponse:(XMPPIQ*)inIQ
+{
+    NSString *iqId = [inIQ attributeStringValueForName:@"id"];
+    
+    NSXMLElement *iq = [XMPPIQ iqWithType:@"error" elementID:iqId];
+    [iq addAttributeWithName:@"to" stringValue:inIQ.fromStr];
+    
+    NSXMLElement *error = [NSXMLElement elementWithName:@"error"];
+    [error addAttributeWithName:@"code" stringValue:@"403"];
+    [error addAttributeWithName:@"type" stringValue:@"AUTH"];
+    [iq addChild:error];
+    
+    NSXMLElement *forbidden = [NSXMLElement elementWithName:@"forbidden" xmlns:@"urn:ietf:params:xml:ns:xmpp-stanzas"];
+    [error addChild:forbidden];
+    
+    [_xmppStream sendElement:iq];
+    
+    // 删除数据库的当前文件记录
+    
+}
+
+@end
+
+
+#pragma mark -
+#pragma mark XMPPFileTransfer
+//////////////////////////////////////xmpp 文件传输管理//////////////////////////////////////////////
+@implementation XMPPIMFileManager
+#pragma mark -
+#pragma mark init
+
+- (id)init
+{
+    return [self initWithDispatchQueue:NULL];
+}
+
+- (id)initWithDispatchQueue:(dispatch_queue_t)queue
+{
+    self = [super initWithDispatchQueue:queue];
+    if (self)
+    {
+       
+    }
+    return self;
+}
+
+#pragma mark -
+#pragma mark active/deactive
+
+- (BOOL)activate:(XMPPStream *)aXmppStream
+{
+    if ([super activate:aXmppStream])
+    {
+        return YES;
+    }
+    return NO;
+}
+
+- (void)deactivate
+{
+    [super deactivate];
+}
 @end
