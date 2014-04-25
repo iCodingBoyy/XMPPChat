@@ -23,9 +23,10 @@ typedef enum XMPP_FILE_TYPE
 @interface XmppFileModel : NSObject
 @property (nonatomic, strong) NSString   *uuid;
 @property (nonatomic, strong) NSString   *fileName;
-@property (nonatomic, assign) NSUInteger fileSize;
+@property (nonatomic, assign) UInt32 fileSize;
 @property (nonatomic, strong) NSString   *mimetype;
 @property (nonatomic, strong) NSString   *hashCode;
+@property (nonatomic, strong) NSString   *filePath;
 @property (nonatomic, strong) NSDate     *timeStamp;
 @property (nonatomic, strong) XMPPJID    *JID;
 @property (nonatomic, assign) BOOL       isOutGoing;
@@ -66,21 +67,31 @@ typedef enum XMPP_FILE_TYPE
 
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender willSendFile:(XmppFileModel*)file;
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender didSendFile:(XmppFileModel*)file;
+- (void)xmppFileTrans:(XMPPFileTransfer*)sender didSuccessSendFile:(XmppFileModel*)file;
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender didFailSendFile:(XmppFileModel *)file;
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender willReceiveFile:(XmppFileModel*)file;
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender didReceiveFile:(XmppFileModel*)file;
+- (void)xmppFileTrans:(XMPPFileTransfer*)sender didSuccessReceiveFile:(XmppFileModel*)file;
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender didFailRecFile:(XmppFileModel *)file;
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender didRejectFile:(XmppFileModel*)file;
 - (void)xmppFileTrans:(XMPPFileTransfer*)sender didUpdateUI:(NSUInteger)progressValue;
 @end
 
 @interface XMPPFileTransfer : NSObject
+@property (nonatomic, strong) XMPPIQ *receiveIQ;
 @property (nonatomic, OBJ_WEAK) id<xmppFileDelegate> delegate;
 @property (nonatomic, strong) XmppFileModel *fileModel;
 
 - (id)initWithStream:(XMPPStream*)xmppStream toJID:(XMPPJID*)jid;
 - (id)initWithStream:(XMPPStream *)xmppStream inIQRequest:(XMPPIQ *)inIQ;
 - (void)startWithDelegate:(id)aDelegate delegateQueue:(dispatch_queue_t)aDelegateQueue;
+- (void)sendFileTransferRequest:(XMPPJID*)toJID
+                       fileName:(NSString*)fileName
+                       fileSize:(NSString*)fileSize
+                       fileDesc:(NSString*)fileDesc
+                       mimeType:(NSString*)mimeType
+                           hash:(NSString*)hashCode
+                           date:(NSString*)fileDate;
 @end
 
 
@@ -89,5 +100,5 @@ typedef enum XMPP_FILE_TYPE
 ///////////////////////////xmpp文件传输管理///////////////////////////////////////////
 
 @interface XMPPIMFileManager : XMPPModule
-
+- (BOOL)sendImageWithData:(NSData*)imageData toJID:(XMPPJID*)jid;
 @end

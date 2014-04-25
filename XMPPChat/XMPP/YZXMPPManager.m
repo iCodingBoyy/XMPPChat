@@ -14,7 +14,7 @@
 #define KXMPPLOGINPWD @"KXMPPLOGINPWD"
 
 
-@interface YZXMPPManager() <XMPPRosterDelegate,XMPPMessageArchivingStorage,xmppFileMgrDelegate>
+@interface YZXMPPManager() <XMPPRosterDelegate,XMPPMessageArchivingStorage>
 {
     BOOL allowSelfSignedCertificates;
 	BOOL allowSSLHostNameMismatch;
@@ -94,9 +94,8 @@
 //    [_xmppCapabilities addDelegate:self delegateQueue:dispatch_get_main_queue()];
     [_xmppMessageArchiving addDelegate:self delegateQueue:dispatch_get_main_queue()];
     
-    _fileManager = [[XMPPFileManager alloc]init];
+    _fileManager = [[XMPPIMFileManager alloc]init];
     [_fileManager addDelegate:self delegateQueue:dispatch_get_main_queue()];
-    [_fileManager setDelegate:self];
     [_fileManager activate:_xmppStream];
     
 //    XMPPMessageDeliveryReceipts * deliveryReceiptsModule = [[XMPPMessageDeliveryReceipts alloc] init];
@@ -116,6 +115,10 @@
 	allowSSLHostNameMismatch = YES;
 }
 
+- (void)sendImage:(NSData*)imageData Jid:(XMPPJID*)toJID
+{
+    [_fileManager sendImageWithData:imageData toJID:toJID];
+}
 
 - (void)releaseXMPPStream
 {
@@ -543,29 +546,14 @@
 }
 #define PresenceServerURL @"http://www.savvy-tech.net:9090/plugins/presence/status"
 
-- (BOOL)sendFile:(NSData *)data toUser:(NSString *)xmppUser
-{
-    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/Server",xmppUser,KXMPPHostName];
-    NSString *fileName = [NSString stringWithFormat:@"photo%@.png",[_xmppStream generateUUID]];
-    XMPPJID *senderJID = [XMPPJID jidWithString:xmppJIDString];
-    [_fileManager sendImagetoJID:senderJID imageName:fileName data:data mimeType:nil];
-    return YES;
-}
+//- (BOOL)sendFile:(NSData *)data toUser:(NSString *)xmppUser
+//{
+//    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/Server",xmppUser,KXMPPHostName];
+//    NSString *fileName = [NSString stringWithFormat:@"photo%@.png",[_xmppStream generateUUID]];
+//    XMPPJID *senderJID = [XMPPJID jidWithString:xmppJIDString];
+//    return YES;
+//}
 
-- (void)xmppFileMgr:(XMPPFileManager *)fileMgr didFailToSendFile:(xmppFileModel *)file error:(DDXMLElement *)error
-{
-    
-}
-
-- (void)xmppFileMgr:(XMPPFileManager *)fileMgr willReceiveFile:(xmppFileModel *)file
-{
-
-}
-
-- (void)xmppFileMgr:(XMPPFileManager *)fileMgr didReceiveFile:(xmppFileModel *)file
-{
-    
-}
 #pragma mark -
 #pragma mark 好友管理
 
@@ -701,6 +689,7 @@
 - (void)xmppStream:(XMPPStream *)sender didReceiveMessage:(XMPPMessage *)message
 {
     DEBUG_METHOD(@"---%s---%@",__FUNCTION__,message.description);
+    return;
     if ([message isChatMessageWithBody])
 	{
 		XMPPUserCoreDataStorageObject *user = [_xmppRosterStorage userForJID:[message from]

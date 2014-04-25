@@ -76,7 +76,6 @@
 		6B8F8A3118F52FE200DBC675 /* MKEntryPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */; };
 		6B8F8A3218F52FE200DBC675 /* TopBar.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2E18F52FE200DBC675 /* TopBar.png */; };
 		6B8F8A3318F52FE200DBC675 /* TopBar@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2F18F52FE200DBC675 /* TopBar@2x.png */; };
-		6B9D804C190526A7005D08B1 /* XMPPFileManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B9D804B190526A7005D08B1 /* XMPPFileManager.m */; };
 		6BB737AE18ED188C00F9B90A /* NSObject+PropertyListing.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */; };
 		6BB737B418ED50CF00F9B90A /* YZTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BB737B318ED50CF00F9B90A /* YZTextField.m */; };
 		6BDE825A18E51D7B00356E41 /* YZXMPPManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 6BDE825918E51D7B00356E41 /* YZXMPPManager.m */; };
@@ -192,8 +191,6 @@
 		6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MKEntryPanel.xib; sourceTree = "<group>"; };
 		6B8F8A2E18F52FE200DBC675 /* TopBar.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = TopBar.png; sourceTree = "<group>"; };
 		6B8F8A2F18F52FE200DBC675 /* TopBar@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "TopBar@2x.png"; sourceTree = "<group>"; };
-		6B9D804A190526A7005D08B1 /* XMPPFileManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPFileManager.h; sourceTree = "<group>"; };
-		6B9D804B190526A7005D08B1 /* XMPPFileManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPFileManager.m; sourceTree = "<group>"; };
 		6BB737AC18ED188C00F9B90A /* NSObject+PropertyListing.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSObject+PropertyListing.h"; sourceTree = "<group>"; };
 		6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSObject+PropertyListing.m"; sourceTree = "<group>"; };
 		6BB737B218ED50CF00F9B90A /* YZTextField.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZTextField.h; sourceTree = "<group>"; };
@@ -487,8 +484,6 @@
 				6BDE825918E51D7B00356E41 /* YZXMPPManager.m */,
 				6BFF00F41907A96900D60B52 /* XMPPIMFileTransfer.h */,
 				6BFF00F51907A96900D60B52 /* XMPPIMFileTransfer.m */,
-				6B9D804A190526A7005D08B1 /* XMPPFileManager.h */,
-				6B9D804B190526A7005D08B1 /* XMPPFileManager.m */,
 				6BB737AC18ED188C00F9B90A /* NSObject+PropertyListing.h */,
 				6BB737AD18ED188C00F9B90A /* NSObject+PropertyListing.m */,
 			);
@@ -704,7 +699,6 @@
 				6BFF00F61907A96900D60B52 /* XMPPIMFileTransfer.m in Sources */,
 				6B6BF03A18E9445E00E05F5E /* RosterViewController.m in Sources */,
 				6B13C38B18E51667002E3AF0 /* main.m in Sources */,
-				6B9D804C190526A7005D08B1 /* XMPPFileManager.m in Sources */,
 				6B6BF03D18E944B000E05F5E /* RecentMsgViewController.m in Sources */,
 				6B6BF04318E9450500E05F5E /* NewsViewController.m in Sources */,
 				6B4ED21C18EC127100E69BD1 /* YZChatToolBoxView.m in Sources */,

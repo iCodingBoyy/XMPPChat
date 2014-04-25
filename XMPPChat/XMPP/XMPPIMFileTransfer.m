@@ -16,7 +16,26 @@
 //////////////////////////////////////XmppFileModel//////////////////////////////////////////////
 
 @implementation XmppFileModel
-
+- (id)initWithReceiveIQ:(XMPPIQ*)inIQ
+{
+    self = [super init];
+    if (self)
+    {
+        _JID = inIQ.from;
+        _timeStamp = [NSDate date];
+        
+        NSXMLElement *si = [inIQ elementForName:@"si"];
+        NSXMLElement *file = [si elementForName:@"file"];
+        
+        _uuid = [[inIQ attributeForName:@"id"]stringValue];
+        _mimetype = [[si attributeForName:@"mime-type"]stringValue];
+        _fileName = [[file attributeForName:@"name"]stringValue];
+        _fileSize = (UInt32)[[[file attributeForName:@"size"]stringValue]longLongValue];
+        _hashCode = [[file attributeForName:@"hash"]stringValue];
+        _isOutGoing = NO;
+    }
+    return self;
+}
 @end
 
 
@@ -143,7 +162,8 @@ static NSMutableArray *proxyCandidates;
 
 - (void)performPostInitSetup
 {
-    fileTransQueue = dispatch_queue_create("TURNSocket", NULL);
+    NSString *queueName = NSStringFromClass([self class]);
+    fileTransQueue = dispatch_queue_create([queueName UTF8String], NULL);
 	fileTransQueueTag = &fileTransQueueTag;
 	dispatch_queue_set_specific(fileTransQueue, fileTransQueueTag, fileTransQueueTag, NULL);
     @synchronized(existingTurnSockets)
@@ -186,6 +206,11 @@ static NSMutableArray *proxyCandidates;
             // 等待目标方应答服务发现请求超时则失败
             [self setUpBSSupportQueryTimer];
         }
+        else
+        {
+            // 目标方等待初始方服务发现请求失败
+             [self setUpBSSupportQueryTimer];
+        }
     }});
 }
 
@@ -204,17 +229,17 @@ static NSMutableArray *proxyCandidates;
 - (void)setUpDispatchTimer:(dispatch_source_t)timer timeout:(NSTimeInterval)timeout
 {
     NSAssert(dispatch_get_specific(fileTransQueueTag), @"Invoked on incorrect queue");
-    if (timer == nil)
+    if (discoTimer == NULL)
     {
-        timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, fileTransQueue);
+        discoTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, fileTransQueue);
         dispatch_time_t tt = dispatch_time(DISPATCH_TIME_NOW, (timeout*NSEC_PER_SEC));
-        dispatch_source_set_timer(timer, tt, DISPATCH_TIME_FOREVER, 0.1);
-        dispatch_resume(timer);
+        dispatch_source_set_timer(discoTimer, tt, DISPATCH_TIME_FOREVER, 0.1);
+        dispatch_resume(discoTimer);
     }
     else
     {
         dispatch_time_t tt = dispatch_time(DISPATCH_TIME_NOW, (timeout * NSEC_PER_SEC));
-		dispatch_source_set_timer(timer, tt, DISPATCH_TIME_FOREVER, 0.1);
+		dispatch_source_set_timer(discoTimer, tt, DISPATCH_TIME_FOREVER, 0.1);
     }
 }
 
@@ -368,12 +393,25 @@ static NSMutableArray *proxyCandidates;
 
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIQ
 {
+    DEBUG_METHOD(@"--%s---%@",__FUNCTION__,inIQ.description);
     NSString *type = inIQ.type;
     if ([type isEqualToString:@"error"])
     {
         [self fail];
         return NO;
     }
+    
+    if ([type isEqualToString:@"get"])
+    {
+        NSXMLElement *query = [inIQ elementForName:@"query"];
+        if (query && [query.xmlns isEqualToString:@"http://jabber.org/protocol/disco#info"])
+        {
+            NSLog(@"--目标方应答服务发现请求---");
+            [self cancelTimer];
+            return [self sendByteStreamsSupportReponse:inIQ];
+        }
+    }
+    
     if ([type isEqualToString:@"set"])
     {
         NSXMLElement *query = [inIQ elementForName:@"query"];
@@ -1164,9 +1202,9 @@ static NSMutableArray *proxyCandidates;
 	
 	dispatch_async(delegateQueue, ^{ @autoreleasepool {
 		
-        if (_delegate && [_delegate respondsToSelector:@selector(xmppSocksDidFail:)])
+        if (_delegate && [_delegate respondsToSelector:@selector(xmppSocks:didSucceed:)])
         {
-            [_delegate xmppSocksDidFail:self];
+            [_delegate xmppSocks:self didSucceed:_asyncSocket];
         }
     }});
 	
@@ -1180,14 +1218,13 @@ static NSMutableArray *proxyCandidates;
 	// Record finish time
 	_finishTime = [[NSDate alloc] init];
 	
-	dispatch_async(delegateQueue, ^{ @autoreleasepool {
+		dispatch_async(delegateQueue, ^{ @autoreleasepool {
 		
-        if (_delegate && [_delegate respondsToSelector:@selector(xmppSocks:didSucceed:)])
+        if (_delegate && [_delegate respondsToSelector:@selector(xmppSocksDidFail:)])
         {
-            [_delegate xmppSocks:self didSucceed:_asyncSocket];
+            [_delegate xmppSocksDidFail:self];
         }
     }});
-	
 	[self cleanup];
 }
 
@@ -1226,8 +1263,23 @@ static NSMutableArray *proxyCandidates;
 {
 	NSAssert(dispatch_get_specific(fileTransQueueTag), @"Invoked on incorrect queue.");
 	
-    [self releaseDispatchSource:turnTimer flag:YES];
-	[self releaseDispatchSource:discoTimer flag:YES];
+    if (turnTimer)
+    {
+        dispatch_source_cancel(turnTimer);
+#if !OS_OBJECT_USE_OBJC
+		dispatch_release(turnTimer);
+#endif
+            turnTimer = NULL;
+	}
+    if (discoTimer)
+    {
+        dispatch_source_cancel(discoTimer);
+#if !OS_OBJECT_USE_OBJC
+		dispatch_release(discoTimer);
+#endif
+        discoTimer = NULL;
+	}
+    
 	[_xmppStream removeDelegate:self delegateQueue:fileTransQueue];
     
     @synchronized(existingTurnSockets)
@@ -1239,8 +1291,23 @@ static NSMutableArray *proxyCandidates;
 
 - (void)dealloc
 {
-	[self releaseDispatchSource:turnTimer flag:YES];
-    [self releaseDispatchSource:discoTimer flag:YES];
+	if (turnTimer)
+    {
+        dispatch_source_cancel(turnTimer);
+#if !OS_OBJECT_USE_OBJC
+		dispatch_release(turnTimer);
+#endif
+        turnTimer = NULL;
+	}
+    
+    if (discoTimer)
+    {
+        dispatch_source_cancel(discoTimer);
+#if !OS_OBJECT_USE_OBJC
+		dispatch_release(discoTimer);
+#endif
+        discoTimer = NULL;
+	}
     
 	
 #if !OS_OBJECT_USE_OBJC
@@ -1264,10 +1331,33 @@ static NSMutableArray *proxyCandidates;
 #pragma mark -
 #pragma mark XMPPFileTransfer
 //////////////////////////////////////xep-096 文件传输//////////////////////////////////////////////
-@interface XMPPFileTransfer()
+@interface XMPPFileTransfer() <xmppSKConnectDelegate,GCDAsyncSocketDelegate>
+{
+    dispatch_queue_t delegateQueue;
+    dispatch_queue_t fileTransQueue;
+    void *fileTransQueueTag;
+    BOOL _isSendingFile;
+    
+    NSMutableArray *_fileSKConnectArray;
+    NSFileHandle *_writehandle;
+    NSFileHandle *_readhandle;
+    NSUInteger _receiveLen;
+}
+@property (nonatomic, strong) XMPPJID *senderJID;
+@property (nonatomic, strong) XMPPJID *receiverJID;
 @property (nonatomic, strong) XMPPStream *xmppStream;
 @end
 @implementation XMPPFileTransfer
+
+- (id)init
+{
+    self = [super init];
+    if (self)
+    {
+        _fileSKConnectArray = [[NSMutableArray alloc]init];
+    }
+    return self;
+}
 
 - (id)initWithStream:(XMPPStream *)xmppStream toJID:(XMPPJID *)jid
 {
@@ -1275,23 +1365,327 @@ static NSMutableArray *proxyCandidates;
     if (self)
     {
         _xmppStream = xmppStream;
+        _isSendingFile = YES;
+        _receiverJID = jid;
+        [self performPostInitSetup];
     }
     return self;
 }
 
 - (id)initWithStream:(XMPPStream *)xmppStream inIQRequest:(XMPPIQ *)inIQ
 {
+    NSLog(@"-----%@---",inIQ.description);
     self = [super init];
     if (self)
     {
         _xmppStream = xmppStream;
+        _isSendingFile = NO;
+        _receiveIQ = inIQ;
+        _senderJID = inIQ.from;
+        _fileModel = [[XmppFileModel alloc]initWithReceiveIQ:inIQ];
+         [self performPostInitSetup];
     }
     return self;
 }
 
+- (void)performPostInitSetup
+{
+    NSString *queueName = NSStringFromClass([self class]);
+    fileTransQueue = dispatch_queue_create([queueName UTF8String], NULL);
+	fileTransQueueTag = &fileTransQueueTag;
+	dispatch_queue_set_specific(fileTransQueue, fileTransQueueTag, fileTransQueueTag, NULL);
+}
+
 - (void)startWithDelegate:(id)aDelegate delegateQueue:(dispatch_queue_t)aDelegateQueue
 {
-    _delegate = aDelegate;
+    dispatch_async(fileTransQueue, ^{
+        
+        _delegate = aDelegate;
+        delegateQueue = aDelegateQueue;
+        
+#if !OS_OBJECT_USE_OBJC
+		dispatch_retain(delegateQueue);
+#endif
+        [_xmppStream addDelegate:self delegateQueue:fileTransQueue];
+        
+        if (_isSendingFile)
+        {
+            [self willSendFile];
+        }
+        else
+        {
+            [self willReceiveFile];
+        }
+    });
+    
+}
+
+#pragma mark -
+#pragma mark XMPPStream Delegate
+
+- (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
+{
+    DEBUG_METHOD(@"--%s--%@",__FUNCTION__,inIq.description);
+    NSString *type = inIq.type;
+    if ([type isEqualToString:@"error"])
+    {
+        [self didFailSendFile];
+    }
+    
+    if ([type isEqualToString:@"result"])
+    {
+        NSXMLElement *si = [inIq elementForName:@"si"];
+        if (si && [si.xmlns isEqualToString:@"http://jabber.org/protocol/si"])
+        {
+            NSXMLElement *feature = [si elementForName:@"feature"];
+            if (feature && [feature.xmlns isEqualToString:@"http://jabber.org/protocol/feature-neg"])
+            {
+                DEBUG_METHOD(@"--初始方开始发送文件--");
+                // 初始方开始发送文件
+                [self didSendFile];
+                
+                // 进入xep-065协商
+                [xmppSocksConnect initialize];
+                [xmppSocksConnect setProxyCandidates:[NSArray arrayWithObjects:@"www.savvy-tech.net", nil]];
+                xmppSocksConnect *socketConnect = [[xmppSocksConnect alloc]initWithStream:_xmppStream toJID:inIq.from];
+                [socketConnect startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+                [_fileSKConnectArray addObject:socketConnect];
+            }
+        }
+    }
+    return NO;
+}
+
+#pragma mark -
+#pragma mark delegate
+
+- (void)willSendFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:willSendFile:)])
+            {
+                [_delegate xmppFileTrans:self willSendFile:_fileModel];
+            }
+        }
+    });
+}
+
+- (void)willReceiveFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:willReceiveFile:)])
+            {
+                [_delegate xmppFileTrans:self willReceiveFile:_fileModel];
+            }
+        }
+    });
+}
+
+- (void)didSendFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_isSendingFile)
+            {
+                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didSendFile:)])
+                {
+                    [_delegate xmppFileTrans:self didSendFile:_fileModel];
+                }
+            }
+            
+        }});
+}
+
+- (void)didSuccessSendFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_isSendingFile)
+            {
+                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didSuccessSendFile:)])
+                {
+                    [_delegate xmppFileTrans:self didSuccessSendFile:_fileModel];
+                }
+            }
+        }});
+
+}
+
+- (void)didFailSendFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_isSendingFile)
+            {
+                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didFailSendFile:)])
+                {
+                    [_delegate xmppFileTrans:self didFailSendFile:_fileModel];
+                }
+            }
+        }});
+}
+
+- (void)didReceiveFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_isSendingFile)
+            {
+                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didReceiveFile:)])
+                {
+                    [_delegate xmppFileTrans:self didReceiveFile:_fileModel];
+                }
+            }
+        }});
+}
+
+- (void)didSuccessReceiveFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_isSendingFile)
+            {
+                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didSuccessReceiveFile:)])
+                {
+                    [_delegate xmppFileTrans:self didSuccessReceiveFile:_fileModel];
+                }
+            }
+        }});
+
+}
+- (void)didFailRecFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_isSendingFile)
+            {
+                if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didFailRecFile:)])
+                {
+                    [_delegate xmppFileTrans:self didFailRecFile:_fileModel];
+                }
+            }
+        }});
+}
+
+- (void)cleanUp
+{
+    [_xmppStream removeDelegate:self delegateQueue:fileTransQueue];
+}
+#pragma mark -
+#pragma mark xmppSKConnectDelegate
+
+- (void)xmppSocks:(xmppSocksConnect *)sender didSucceed:(GCDAsyncSocket *)socket
+{
+    DEBUG_METHOD(@"--%s--",__FUNCTION__);
+//    socket.delegate = self;
+    [socket setDelegate:self delegateQueue:fileTransQueue];
+    
+    if (_isSendingFile)
+    {
+        // 开始写数据
+        DEBUG_STR(@"---开始写数据---");
+
+        _readhandle = [NSFileHandle fileHandleForReadingAtPath:_fileModel.filePath];
+        DEBUG_METHOD(@"----filename---%ld",(unsigned long)_readhandle.availableData.length);
+
+        [_readhandle seekToFileOffset:0];
+        NSData *data = [_readhandle readDataOfLength:1024];
+        [_readhandle seekToFileOffset:data.length];
+        [socket writeData:data withTimeout:-1 tag:1];
+        
+    }
+    else
+    {
+        // 开始读数据
+        DEBUG_STR(@"----开始读数据-----");
+        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES);
+        NSString *docDir = [paths objectAtIndex:0];
+        NSString *filePath = [docDir stringByAppendingPathComponent:_fileModel.fileName];
+        NSFileManager *filemanager = [NSFileManager defaultManager];
+        if ([filemanager fileExistsAtPath:filePath])
+        {
+            [filemanager removeItemAtPath:filePath error:nil];
+        }
+        [filemanager createFileAtPath:filePath contents:nil attributes:nil];
+        _writehandle = [NSFileHandle fileHandleForWritingAtPath:filePath];
+        [_writehandle truncateFileAtOffset:0];
+        [_writehandle seekToFileOffset:0];
+        _receiveLen = 0;
+        [socket readDataWithTimeout:-1 tag:2];
+        DEBUG_METHOD(@"----filename---%@",_fileModel.fileName);
+    }
+}
+
+
+- (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
+{
+    DEBUG_METHOD(@"---%s--%ld:%ld",__FUNCTION__,(unsigned long)_fileModel.fileSize,(unsigned long)data.length);
+    if (tag == 2)
+    {
+        _receiveLen += data.length;
+        [_writehandle seekToEndOfFile];
+        [_writehandle writeData:data];
+        DEBUG_METHOD(@"------receivelen---%ld：%ld",(unsigned long)_receiveLen,(unsigned long)_writehandle.availableData.length);
+        if (_receiveLen < _fileModel.fileSize)
+        {
+            [sock readDataWithTimeout:-1 tag:2];
+        }
+        else
+        {
+            DEBUG_METHOD(@"读数据完成");
+            _receiveLen = 0;
+            [_writehandle closeFile];
+            [sock disconnectAfterReading];
+            [self didSuccessReceiveFile];
+        }
+    }
+}
+
+- (void)socket:(GCDAsyncSocket *)sock didWriteDataWithTag:(long)tag
+{
+    DEBUG_METHOD(@"---%s--",__FUNCTION__);
+    if (tag == 1)
+    {
+        unsigned long long offset = [_readhandle offsetInFile];
+        if (offset < _fileModel.fileSize)
+        {
+            sleep(2);
+            NSData *data = [_readhandle readDataOfLength:1024];
+            [_readhandle seekToFileOffset:[_readhandle offsetInFile]+data.length];
+            [sock writeData:data withTimeout:-1 tag:1];
+            
+            DEBUG_METHOD(@"---offset---%lld:%ld",offset,(unsigned long)data.length);
+        }
+        else
+        {
+            DEBUG_METHOD(@"写数据完成");
+            [_readhandle closeFile];
+            [sock disconnectAfterWriting];
+            [self didSuccessSendFile];
+        }
+    }
+}
+
+
+
+- (void)xmppSocksDidFail:(xmppSocksConnect *)sender
+{
+    DEBUG_METHOD(@"--%s--",__FUNCTION__);
+    if ([_fileSKConnectArray count] > 0)
+    {
+        [_fileSKConnectArray removeAllObjects];
+    }
+    
+    if (_isSendingFile)
+    {
+        [self didFailSendFile];
+    }
+    else
+    {
+        [self didReceiveFile];
+    }
 }
 
 #pragma mark -
@@ -1300,22 +1694,22 @@ static NSMutableArray *proxyCandidates;
 // 发送协商请求<请求发送文件>
 /*
  <iq type='set' id='offer1' to='receiver@jabber.org/resource'>
- <si xmlns='http://jabber.org/protocol/si'
- id='a0'
- mime-type='text/plain'
- profile='http://jabber.org/protocol/si/profile/file-transfer'>
- <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
- name='test.txt'
- size='1022'/>
- <feature xmlns='http://jabber.org/protocol/feature-neg'>
- <x xmlns='jabber:x:data' type='form'>
- <field var='stream-method' type='list-single'>
- <option><value>http://jabber.org/protocol/bytestreams</value></option>
- <option><value>http://jabber.org/protocol/ibb</value></option>
- </field>
- </x>
- </feature>
- </si>
+     <si xmlns='http://jabber.org/protocol/si'
+         id='a0'
+         mime-type='text/plain'
+         profile='http://jabber.org/protocol/si/profile/file-transfer'>
+     <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
+           name='test.txt'
+           size='1022'/>
+         <feature xmlns='http://jabber.org/protocol/feature-neg'>
+             <x xmlns='jabber:x:data' type='form'>
+                 <field var='stream-method' type='list-single'>
+                     <option><value>http://jabber.org/protocol/bytestreams</value></option>
+                     <option><value>http://jabber.org/protocol/ibb</value></option>
+                 </field>
+             </x>
+         </feature>
+     </si>
  </iq>
  */
 /**
@@ -1393,15 +1787,15 @@ static NSMutableArray *proxyCandidates;
 // 发送代理响应<接受文件传输>
 /*
  <iq type='result' to='sender@jabber.org/resource' id='offer1'>
- <si xmlns='http://jabber.org/protocol/si'>
- <feature xmlns='http://jabber.org/protocol/feature-neg'>
- <x xmlns='jabber:x:data' type='submit'>
- <field var='stream-method'>
- <value>http://jabber.org/protocol/bytestreams</value>
- </field>
- </x>
- </feature>
- </si>
+     <si xmlns='http://jabber.org/protocol/si'>
+        <feature xmlns='http://jabber.org/protocol/feature-neg'>
+            <x xmlns='jabber:x:data' type='submit'>
+                <field var='stream-method'>
+                    <value>http://jabber.org/protocol/bytestreams</value>
+                </field>
+            </x>
+        </feature>
+    </si>
  </iq>
  */
 /**
@@ -1411,6 +1805,8 @@ static NSMutableArray *proxyCandidates;
  */
 - (void)sendReceiveFiletransferResponse:(XMPPIQ*)inIQ
 {
+    DEBUG_METHOD(@"---%s---",__FUNCTION__);
+    
     NSString *iqId = [inIQ attributeStringValueForName:@"id"];
     
     NSXMLElement *iq = [XMPPIQ iqWithType:@"result" elementID:iqId];
@@ -1438,7 +1834,20 @@ static NSMutableArray *proxyCandidates;
     
     [_xmppStream sendElement:iq];
     
+    // 目标方接收文件传输
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didReceiveFile:)])
+            {
+                [_delegate xmppFileTrans:self didReceiveFile:_fileModel];
+            }
+        }
+    });
+    
     // 进入xep-065协商阶段
+    xmppSocksConnect *socksConnect = [[xmppSocksConnect alloc]initWithStream:_xmppStream inIQRequest:inIQ];
+    [socksConnect startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_fileSKConnectArray addObject:socksConnect];
 }
 
 // 发送拒绝文件传输响应信息
@@ -1471,8 +1880,15 @@ static NSMutableArray *proxyCandidates;
     
     [_xmppStream sendElement:iq];
     
-    // 删除数据库的当前文件记录
-    
+    // 目标方拒绝文件传输
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didRejectFile:)])
+            {
+                [_delegate xmppFileTrans:self didRejectFile:_fileModel];
+            }
+        }
+    });
 }
 
 @end
@@ -1481,6 +1897,9 @@ static NSMutableArray *proxyCandidates;
 #pragma mark -
 #pragma mark XMPPFileTransfer
 //////////////////////////////////////xmpp 文件传输管理//////////////////////////////////////////////
+@interface XMPPIMFileManager() <xmppFileDelegate>
+@property (nonatomic, strong) NSMutableArray *fileQueueArray;
+@end
 @implementation XMPPIMFileManager
 #pragma mark -
 #pragma mark init
@@ -1495,7 +1914,7 @@ static NSMutableArray *proxyCandidates;
     self = [super initWithDispatchQueue:queue];
     if (self)
     {
-       
+        _fileQueueArray = [[NSMutableArray alloc]init];
     }
     return self;
 }
@@ -1515,5 +1934,142 @@ static NSMutableArray *proxyCandidates;
 - (void)deactivate
 {
     [super deactivate];
+}
+
+- (BOOL)sendImageWithData:(NSData*)imageData toJID:(XMPPJID*)jid
+{
+    NSString *fileName = [NSString stringWithFormat:@"%@.png",xmppStream.generateUUID];
+    NSUInteger fileSize = imageData.length;
+    
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES);
+    NSString *docDir = [paths objectAtIndex:0];
+    NSString *filePath = [docDir stringByAppendingPathComponent:fileName];
+    
+    NSFileManager *filemanager = [NSFileManager defaultManager];
+    if (![filemanager fileExistsAtPath:filePath])
+    {
+        if (![filemanager createFileAtPath:filePath contents:imageData attributes:nil])
+        {
+            return NO;
+        }
+    }
+    
+    XmppFileModel *fileModel = [[XmppFileModel alloc]init];
+    fileModel.fileName = fileName;
+    fileModel.fileSize = fileSize;
+    fileModel.filePath = filePath;
+    fileModel.mimetype = @"image/png";
+    fileModel.timeStamp = [NSDate date];
+    fileModel.JID = jid;
+    fileModel.isOutGoing = YES;
+    fileModel.fileType = XMPP_FILE_IMAGE;
+    
+    XMPPFileTransfer *fileTrans = [[XMPPFileTransfer alloc]initWithStream:xmppStream toJID:jid];
+    [fileTrans setFileModel:fileModel];
+    [fileTrans startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+    
+    NSString *fileSizeStr = [NSString stringWithFormat:@"%ld",(unsigned long)fileSize];
+    [fileTrans sendFileTransferRequest:jid
+                              fileName:fileName
+                              fileSize:fileSizeStr
+                              fileDesc:@"Sending"
+                              mimeType:@"image/png"
+                                  hash:@"552da749930852c69ae5d2141d3766b1"
+                                  date:@"1969-07-21T02:56:15Z"];
+    [_fileQueueArray addObject:fileTrans];
+    return YES;
+}
+
+#pragma mark -
+#pragma mark XMPPStream Delegate
+
+- (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
+{
+    DEBUG_METHOD(@"----%s--",__FUNCTION__);
+    NSString *type = inIq.type;
+    if ([type isEqualToString:@"set"])
+    {
+        NSXMLElement *si = [inIq elementForName:@"si"];
+        if (si && [si.xmlns isEqualToString:@"http://jabber.org/protocol/si"])
+        {
+            NSXMLElement *feature = [si elementForName:@"feature"];
+            if ([feature.xmlns isEqualToString:@"http://jabber.org/protocol/feature-neg"])
+            {
+                DEBUG_STR(@"----目标方接收到文件传输请求----");
+                XMPPFileTransfer *fileTransfer = [[XMPPFileTransfer alloc]initWithStream:xmppStream inIQRequest:inIq];
+                [fileTransfer startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+                if (![_fileQueueArray containsObject:fileTransfer])
+                {
+                    [_fileQueueArray addObject:fileTransfer];
+                }
+            }
+        }
+    }
+    return NO;
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didFailRecFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+    if ([_fileQueueArray containsObject:sender])
+    {
+        [_fileQueueArray removeObject:sender];
+    }
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didFailSendFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+    if ([_fileQueueArray containsObject:sender])
+    {
+        [_fileQueueArray removeObject:sender];
+    }
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didReceiveFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didRejectFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didSendFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didSuccessReceiveFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+    if ([_fileQueueArray containsObject:sender])
+    {
+        [_fileQueueArray removeObject:sender];
+    }
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didSuccessSendFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+    if ([_fileQueueArray containsObject:sender])
+    {
+        [_fileQueueArray removeObject:sender];
+    }
+}
+
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender didUpdateUI:(NSUInteger)progressValue
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+}
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender willReceiveFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+    [sender sendReceiveFiletransferResponse:sender.receiveIQ];
+}
+- (void)xmppFileTrans:(XMPPFileTransfer *)sender willSendFile:(XmppFileModel *)file
+{
+    DEBUG_METHOD(@"--%s---",__FUNCTION__);
 }
 @end
