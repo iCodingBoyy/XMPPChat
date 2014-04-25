@@ -9,6 +9,12 @@
 #import "XMPPModule.h"
 #import <XMPP.h>
 
+#define KMaxBufferLen 4096
+#define KMaxReadBytesLen 1024
+#define KReadDataTimeOut -1
+#define KWriteDataTimeOut -1
+
+
 typedef enum XMPP_FILE_TYPE
 {
     xmpp_FILE_UNKNOWN,
@@ -40,18 +46,27 @@ typedef enum XMPP_FILE_TYPE
 
 @class xmppSocksConnect;
 
+/**
+ * XEP-065协议回调，如果成功，则返回一个激活的socket连接，否则返回失败
+ */
 @protocol xmppSKConnectDelegate <NSObject>
-
+@required
 - (void)xmppSocks:(xmppSocksConnect*)sender didSucceed:(GCDAsyncSocket*)socket;
 - (void)xmppSocksDidFail:(xmppSocksConnect *)sender;
+
 @end
+
 @interface xmppSocksConnect : NSObject
 @property (nonatomic, strong) GCDAsyncSocket *asyncSocket;
 @property (nonatomic, OBJ_WEAK) id<xmppSKConnectDelegate> delegate;
 
+// 检查是不是重复的文件传输请求
 + (BOOL)isNewStartSocksRequest:(XMPPIQ*)inIQ;
+
+// 文件传输代理，你必须设置一个可用代理，以确保文件传输正常使用
 + (NSArray*)proxyCandidates;
 + (void)setProxyCandidates:(NSArray*)candidates;
+
 - (id)initWithStream:(XMPPStream*)xmppStream toJID:(XMPPJID*)jid;
 - (id)initWithStream:(XMPPStream *)xmppStream inIQRequest:(XMPPIQ *)inIQ;
 - (void)startWithDelegate:(id)aDelegate delegateQueue:(dispatch_queue_t)aDelegateQueue;

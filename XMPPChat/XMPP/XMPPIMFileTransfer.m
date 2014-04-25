@@ -1342,6 +1342,11 @@ static NSMutableArray *proxyCandidates;
     NSFileHandle *_writehandle;
     NSFileHandle *_readhandle;
     NSUInteger _receiveLen;
+    
+    NSInputStream *_inputStream;
+    NSOutputStream *_outputStream;
+    
+    int receivelen;
 }
 @property (nonatomic, strong) XMPPJID *senderJID;
 @property (nonatomic, strong) XMPPJID *receiverJID;
@@ -1573,102 +1578,162 @@ static NSMutableArray *proxyCandidates;
 {
     [_xmppStream removeDelegate:self delegateQueue:fileTransQueue];
 }
+
+#pragma mark -
+#pragma mark filePath
+
+- (NSString*)documentPath
+{
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES);
+    NSString *docDir = [paths objectAtIndex:0];
+    return docDir;
+}
+
+- (NSString*)fullPath:(NSString*)superPath fileName:(NSString*)filename
+{
+    if (superPath == nil || filename == nil)
+    {
+        DEBUG_STR(@"---父路径为空或者文件名为空--");
+        return nil;
+    }
+    NSString *fullPath = [superPath stringByAppendingPathComponent:filename];
+    return fullPath;
+}
+
+- (BOOL)writeFileToPath:(NSString*)fullPath
+{
+    if (fullPath == nil)
+    {
+        DEBUG_STR(@"---文件路径为空--");
+        return NO;
+    }
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if ([fileManager fileExistsAtPath:fullPath])
+    {
+        NSError *error = nil;
+        if (![fileManager removeItemAtPath:fullPath error:&error])
+        {
+            DEBUG_METHOD(@"--重复文件删除错误---%@",error);
+            return NO;
+        }
+    }
+    if (![fileManager createFileAtPath:fullPath contents:nil attributes:nil])
+    {
+        DEBUG_METHOD(@"---创建文件失败---");
+        return NO;
+    }
+    return YES;
+}
+
+
 #pragma mark -
 #pragma mark xmppSKConnectDelegate
 
 - (void)xmppSocks:(xmppSocksConnect *)sender didSucceed:(GCDAsyncSocket *)socket
 {
     DEBUG_METHOD(@"--%s--",__FUNCTION__);
-//    socket.delegate = self;
     [socket setDelegate:self delegateQueue:fileTransQueue];
     
     if (_isSendingFile)
     {
-        // 开始写数据
-        DEBUG_STR(@"---开始写数据---");
-
-        _readhandle = [NSFileHandle fileHandleForReadingAtPath:_fileModel.filePath];
-        DEBUG_METHOD(@"----filename---%ld",(unsigned long)_readhandle.availableData.length);
-
-        [_readhandle seekToFileOffset:0];
-        NSData *data = [_readhandle readDataOfLength:1024];
-        [_readhandle seekToFileOffset:data.length];
-        [socket writeData:data withTimeout:-1 tag:1];
-        
+        _inputStream = [[NSInputStream alloc]initWithFileAtPath:_fileModel.filePath];
+        [_inputStream open];
+        uint8_t buffer[KMaxBufferLen];
+        int len =  [_inputStream read:buffer maxLength:KMaxReadBytesLen];
+        if (len == -1)
+        {
+            DEBUG_STR(@"----数据读取错误-----");
+            [_inputStream close];
+            [socket disconnect];
+            [self didFailSendFile];
+        }
+        else
+        {
+            DEBUG_METHOD(@"---开始写数据--[totalLen:%ld--writeLen:%d]",_fileModel.fileSize,len);
+            NSData *data = [NSData dataWithBytes:buffer length:len];
+            [socket writeData:data withTimeout:-1 tag:1];
+        }
     }
     else
     {
-        // 开始读数据
-        DEBUG_STR(@"----开始读数据-----");
-        NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES);
-        NSString *docDir = [paths objectAtIndex:0];
-        NSString *filePath = [docDir stringByAppendingPathComponent:_fileModel.fileName];
-        NSFileManager *filemanager = [NSFileManager defaultManager];
-        if ([filemanager fileExistsAtPath:filePath])
+        NSString *fullPath = [self fullPath:[self documentPath] fileName:_fileModel.fileName];
+        if (fullPath == nil || ![self writeFileToPath:fullPath])
         {
-            [filemanager removeItemAtPath:filePath error:nil];
+            DEBUG_STR(@"----创建文件失败--无法写文件---");
+            [socket disconnect];
+            [self didFailRecFile];
         }
-        [filemanager createFileAtPath:filePath contents:nil attributes:nil];
-        _writehandle = [NSFileHandle fileHandleForWritingAtPath:filePath];
-        [_writehandle truncateFileAtOffset:0];
-        [_writehandle seekToFileOffset:0];
-        _receiveLen = 0;
-        [socket readDataWithTimeout:-1 tag:2];
-        DEBUG_METHOD(@"----filename---%@",_fileModel.fileName);
+        else
+        {
+            DEBUG_STR(@"----开始读数据-----%ld",_fileModel.fileSize);
+            _outputStream = [[NSOutputStream alloc]initToFileAtPath:fullPath append:YES];
+            [_outputStream open];
+            _receiveLen = 0;
+            [socket readDataWithTimeout:-1 tag:2];
+        }
     }
 }
 
 
 - (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
 {
-    DEBUG_METHOD(@"---%s--%ld:%ld",__FUNCTION__,(unsigned long)_fileModel.fileSize,(unsigned long)data.length);
     if (tag == 2)
     {
-        _receiveLen += data.length;
-        [_writehandle seekToEndOfFile];
-        [_writehandle writeData:data];
-        DEBUG_METHOD(@"------receivelen---%ld：%ld",(unsigned long)_receiveLen,(unsigned long)_writehandle.availableData.length);
-        if (_receiveLen < _fileModel.fileSize)
+        int writelen =  [_outputStream write:[data bytes] maxLength:data.length];
+        if (writelen == -1)
         {
-            [sock readDataWithTimeout:-1 tag:2];
+            DEBUG_STR(@"---接收数据写入出错---");
+            [_outputStream close];
+            [sock disconnect];
+            [self didFailRecFile];
         }
         else
         {
-            DEBUG_METHOD(@"读数据完成");
-            _receiveLen = 0;
-            [_writehandle closeFile];
-            [sock disconnectAfterReading];
-            [self didSuccessReceiveFile];
-        }
+            [sock readDataWithTimeout:-1 tag:2];
+            _receiveLen += writelen;
+            
+            NSLog(@"--%d-%d",_receiveLen,data.length);
+            
+            if (_receiveLen == _fileModel.fileSize)
+            {
+                NSLog(@"---接收数据完成---");
+                [_outputStream close];
+                [sock disconnect];
+                [self didSuccessReceiveFile];
+            }
+        }//else
     }
 }
 
 - (void)socket:(GCDAsyncSocket *)sock didWriteDataWithTag:(long)tag
 {
-    DEBUG_METHOD(@"---%s--",__FUNCTION__);
     if (tag == 1)
     {
-        unsigned long long offset = [_readhandle offsetInFile];
-        if (offset < _fileModel.fileSize)
+        uint8_t buffer[4096];
+        
+        int len =  [_inputStream read:buffer maxLength:1024];
+        if (len == -1)
         {
-            sleep(2);
-            NSData *data = [_readhandle readDataOfLength:1024];
-            [_readhandle seekToFileOffset:[_readhandle offsetInFile]+data.length];
-            [sock writeData:data withTimeout:-1 tag:1];
-            
-            DEBUG_METHOD(@"---offset---%lld:%ld",offset,(unsigned long)data.length);
+            DEBUG_STR(@"---写数据出错---");
+            [_inputStream close];
+            [sock disconnect];
+            [self didFailSendFile];
+        }
+        else  if (len == 0)
+        {
+            DEBUG_STR(@"---写数据完成---");
+            [_inputStream close];
+            [sock disconnect];
+            [self didSuccessSendFile];
         }
         else
         {
-            DEBUG_METHOD(@"写数据完成");
-            [_readhandle closeFile];
-            [sock disconnectAfterWriting];
-            [self didSuccessSendFile];
+            DEBUG_STR(@"---写数据---%d",len);
+            NSData *data = [NSData dataWithBytes:buffer length:len];
+            [sock writeData:data withTimeout:-1 tag:1];
         }
     }
 }
-
-
 
 - (void)xmppSocksDidFail:(xmppSocksConnect *)sender
 {
@@ -1939,7 +2004,6 @@ static NSMutableArray *proxyCandidates;
 - (BOOL)sendImageWithData:(NSData*)imageData toJID:(XMPPJID*)jid
 {
     NSString *fileName = [NSString stringWithFormat:@"%@.png",xmppStream.generateUUID];
-    NSUInteger fileSize = imageData.length;
     
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES);
     NSString *docDir = [paths objectAtIndex:0];
@@ -1953,6 +2017,10 @@ static NSMutableArray *proxyCandidates;
             return NO;
         }
     }
+    
+    NSFileHandle *handle = [NSFileHandle fileHandleForReadingAtPath:filePath];
+    NSUInteger fileSize = [handle availableData].length;
+    [handle closeFile];
     
     XmppFileModel *fileModel = [[XmppFileModel alloc]init];
     fileModel.fileName = fileName;
