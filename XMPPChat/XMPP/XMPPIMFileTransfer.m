@@ -953,7 +953,7 @@ static NSMutableArray *proxyCandidates;
 {
     DEBUG_METHOD(@"--%s--",__FUNCTION__);
     [sock performBlock:^{
-                [sock enableBackgroundingOnSocket];
+        [sock enableBackgroundingOnSocket];
     }];
     [self socksOpen];
 }
@@ -1467,6 +1467,7 @@ static NSMutableArray *proxyCandidates;
 #pragma mark -
 #pragma mark delegate
 
+// 将会发送文件
 - (void)willSendFile
 {
     dispatch_async(delegateQueue, ^{
@@ -1479,18 +1480,7 @@ static NSMutableArray *proxyCandidates;
     });
 }
 
-- (void)willReceiveFile
-{
-    dispatch_async(delegateQueue, ^{
-        @autoreleasepool {
-            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:willReceiveFile:)])
-            {
-                [_delegate xmppFileTrans:self willReceiveFile:_fileModel];
-            }
-        }
-    });
-}
-
+// 开始发送文件
 - (void)didSendFile
 {
     dispatch_async(delegateQueue, ^{
@@ -1506,6 +1496,7 @@ static NSMutableArray *proxyCandidates;
         }});
 }
 
+// 成功发送文件
 - (void)didSuccessSendFile
 {
     dispatch_async(delegateQueue, ^{
@@ -1518,9 +1509,10 @@ static NSMutableArray *proxyCandidates;
                 }
             }
         }});
-
+     [self cleanUp];
 }
 
+// 发送文件失败
 - (void)didFailSendFile
 {
     dispatch_async(delegateQueue, ^{
@@ -1533,8 +1525,23 @@ static NSMutableArray *proxyCandidates;
                 }
             }
         }});
+     [self cleanUp];
 }
 
+//将会接收文件
+- (void)willReceiveFile
+{
+    dispatch_async(delegateQueue, ^{
+        @autoreleasepool {
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:willReceiveFile:)])
+            {
+                [_delegate xmppFileTrans:self willReceiveFile:_fileModel];
+            }
+        }
+    });
+}
+
+// 开始接收文件
 - (void)didReceiveFile
 {
     dispatch_async(delegateQueue, ^{
@@ -1549,6 +1556,7 @@ static NSMutableArray *proxyCandidates;
         }});
 }
 
+// 成功接收文件
 - (void)didSuccessReceiveFile
 {
     dispatch_async(delegateQueue, ^{
@@ -1561,8 +1569,10 @@ static NSMutableArray *proxyCandidates;
                 }
             }
         }});
-
+    [self cleanUp];
 }
+
+// 接收文件失败
 - (void)didFailRecFile
 {
     dispatch_async(delegateQueue, ^{
@@ -1575,11 +1585,40 @@ static NSMutableArray *proxyCandidates;
                 }
             }
         }});
+     [self cleanUp];
 }
 
 - (void)cleanUp
 {
     [_xmppStream removeDelegate:self delegateQueue:fileTransQueue];
+    [self removeAllSocks];
+}
+
+- (void)removeAllSocks
+{
+    @synchronized(_fileSKConnectArray)
+    {
+        for (GCDAsyncSocket *socket in _fileSKConnectArray)
+        {
+            [socket disconnect];
+        }
+        
+        if ([_fileSKConnectArray count] > 0)
+        {
+            [_fileSKConnectArray removeAllObjects];
+        }
+    }
+}
+
+- (void)removeSocks:(GCDAsyncSocket*)socket
+{
+    @synchronized(_fileSKConnectArray)
+    {
+        if ([_fileSKConnectArray containsObject:socket])
+        {
+            [_fileSKConnectArray removeObject:socket];
+        }
+    }
 }
 
 #pragma mark -
@@ -1627,7 +1666,6 @@ static NSMutableArray *proxyCandidates;
     }
     return YES;
 }
-
 
 #pragma mark -
 #pragma mark xmppSKConnectDelegate
@@ -1746,10 +1784,7 @@ static NSMutableArray *proxyCandidates;
 - (void)xmppSocksDidFail:(xmppSocksConnect *)sender
 {
     DEBUG_METHOD(@"--%s--",__FUNCTION__);
-    if ([_fileSKConnectArray count] > 0)
-    {
-        [_fileSKConnectArray removeAllObjects];
-    }
+    [self cleanUp];
     
     if (_isSendingFile)
     {
@@ -1926,9 +1961,9 @@ static NSMutableArray *proxyCandidates;
 // 发送拒绝文件传输响应信息
 /*
  <iq id='' to='' from='' type='error'>
- <error code='403' type='AUTH'>
- <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
- </error>
+    <error code='403' type='AUTH'>
+        <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
+    </error>
  </iq>
  */
 /**
