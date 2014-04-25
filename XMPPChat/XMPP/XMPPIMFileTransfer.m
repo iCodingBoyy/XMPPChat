@@ -952,6 +952,9 @@ static NSMutableArray *proxyCandidates;
 - (void)socket:(GCDAsyncSocket *)sock didConnectToHost:(NSString *)host port:(uint16_t)port
 {
     DEBUG_METHOD(@"--%s--",__FUNCTION__);
+    [sock performBlock:^{
+                [sock enableBackgroundingOnSocket];
+    }];
     [self socksOpen];
 }
 
@@ -1733,6 +1736,11 @@ static NSMutableArray *proxyCandidates;
             [sock writeData:data withTimeout:-1 tag:1];
         }
     }
+}
+
+- (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
+{
+    
 }
 
 - (void)xmppSocksDidFail:(xmppSocksConnect *)sender
