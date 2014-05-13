@@ -16,10 +16,7 @@
 	int state;
 	BOOL isClient;
 	
-    int id1;
-    
 	dispatch_queue_t turnQueue;
-	void *turnQueueTag;
 	
 	XMPPStream *xmppStream;
 	XMPPJID *jid;
@@ -34,13 +31,13 @@
 	dispatch_source_t discoTimer;
 	
 	NSArray *proxyCandidates;
-	NSInteger proxyCandidateIndex;
+	NSUInteger proxyCandidateIndex;
 	
 	NSMutableArray *candidateJIDs;
-	NSInteger candidateJIDIndex;
+	NSUInteger candidateJIDIndex;
 	
 	NSMutableArray *streamhosts;
-	NSInteger streamhostIndex;
+	NSUInteger streamhostIndex;
 	
 	XMPPJID *proxyJID;
 	NSString *proxyHost;
@@ -52,10 +49,10 @@
 }
 
 + (BOOL)isNewStartTURNRequest:(XMPPIQ *)iq;
-+ (BOOL)isSiTURNRequest:(XMPPIQ *)iq;
-+ (void)responseSIRequest;
+
 + (NSArray *)proxyCandidates;
 + (void)setProxyCandidates:(NSArray *)candidates;
+
 - (id)initWithStream:(XMPPStream *)xmppStream toJID:(XMPPJID *)jid;
 - (id)initWithStream:(XMPPStream *)xmppStream incomingTURNRequest:(XMPPIQ *)iq;
 

@@ -94,9 +94,9 @@
 //    [_xmppCapabilities addDelegate:self delegateQueue:dispatch_get_main_queue()];
     [_xmppMessageArchiving addDelegate:self delegateQueue:dispatch_get_main_queue()];
     
-    _fileManager = [[XMPPIMFileManager alloc]init];
-    [_fileManager addDelegate:self delegateQueue:dispatch_get_main_queue()];
-    [_fileManager activate:_xmppStream];
+    _filetransfer = [[XMPPFileTransfer alloc]init];
+    [_filetransfer addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_filetransfer activate:_xmppStream];
     
 //    XMPPMessageDeliveryReceipts * deliveryReceiptsModule = [[XMPPMessageDeliveryReceipts alloc] init];
 //    deliveryReceiptsModule.autoSendMessageDeliveryRequests = YES;
@@ -117,7 +117,7 @@
 
 - (void)sendImage:(NSData*)imageData Jid:(XMPPJID*)toJID
 {
-    [_fileManager sendImageWithData:imageData toJID:toJID];
+    [_filetransfer sendImageWithData:imageData toJID:toJID];
 }
 
 - (void)releaseXMPPStream
@@ -132,7 +132,7 @@
     [_xmppvCardAvatarModule deactivate];
     [_xmppCapabilities deactivate];
     [_xmppMessageArchiving deactivate];
-    [_fileManager deactivate];
+    [_filetransfer deactivate];
     
     [_xmppStream disconnect];
     
@@ -146,7 +146,7 @@
     _xmppCapabilities = nil;
     _xmppCapabilitiesStorage = nil;
     _xmppMessageArchiving = nil;
-    _fileManager = nil;
+    _filetransfer = nil;
 }
 
 
@@ -489,6 +489,7 @@
     XMPPPresence *xmppPresence = [XMPPPresence presenceWithType:@"unavailable"];
     [_xmppStream sendElement:xmppPresence];
 }
+
 
 #pragma mark -
 #pragma mark queryRoster
