@@ -35,7 +35,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 - (void)xmppFileTrans:(XMPPSingleFTOperation*)sender didSuccessReceiveFile:(XmppFileModel*)file;
 - (void)xmppFileTrans:(XMPPSingleFTOperation*)sender didFailRecFile:(XmppFileModel *)file;
 - (void)xmppFileTrans:(XMPPSingleFTOperation*)sender didRejectFile:(XmppFileModel*)file;
-- (void)xmppFileTrans:(XMPPSingleFTOperation*)sender didUpdateUI:(NSUInteger)progressValue;
+- (void)xmppFileTrans:(XMPPSingleFTOperation*)sender didUpdateUI:(CGFloat)progressValue;
 @end
 
 
@@ -73,7 +73,10 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     dispatch_queue_t fileTransQueue;
     void *fileTransQueueTag;
     
+    dispatch_source_t discoTimer;
+    
     BOOL _isSendingFile;
+    BOOL _isDoneTransFile;
     
     NSFileHandle *_writehandle;
     NSFileHandle *_readhandle;
@@ -81,19 +84,27 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     NSInputStream *_inputStream;
     NSOutputStream *_outputStream;
     
+    // 接收的长度
     NSUInteger _receiveLen;
+    
+    // 写入的长度
+    NSUInteger _writeLen;
+    
     IQStateType _iqState;
 }
-@property (nonatomic, strong) NSString *serverUUID;
-@property (nonatomic, strong) XMPPJID *senderJID;
-@property (nonatomic, strong) XMPPJID *receiverJID;
-@property (nonatomic, strong) XMPPStream *xmppStream;
+@property (nonatomic, strong) NSString      *serverUUID;
+@property (nonatomic, strong) XMPPJID       *senderJID;
+@property (nonatomic, strong) XMPPJID       *receiverJID;
+@property (nonatomic, strong) XMPPStream    *xmppStream;
 @property (nonatomic, strong) XmppFileModel *fileModel;
+@property (nonatomic, strong) TURNSocket    *turnSocket;
 @property (nonatomic, OBJ_WEAK) id<xmppFileDelegate> delegate;
-@property (nonatomic, strong) TURNSocket *turnSocket;
 @end
 
 @implementation XMPPSingleFTOperation
+
+#pragma mark -
+#pragma mark init
 
 - (id)init
 {
@@ -113,9 +124,11 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         _xmppStream = xmppStream;
         _isSendingFile = YES;
         _receiverJID = jid;
+        _iqState = IQStreamMethodListSingleState;
+        
         [self performPostInitSetup];
         
-        _iqState = IQStreamMethodListSingleState;
+        [self setupDiscoTimerForFTRequest];
     }
     return self;
 }
@@ -132,6 +145,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         _senderJID = inIQ.from;
         _fileModel = [[XmppFileModel alloc]initWithReceiveIQ:inIQ];
         [self performPostInitSetup];
+        [self setupDiscoTimerForStreamHost];
     }
     return self;
 }
@@ -168,6 +182,71 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 }
 
 #pragma mark -
+#pragma mark Timer
+
+- (void)setupDiscoTimer:(NSTimeInterval)timeout
+{
+//	NSAssert(dispatch_get_current_queue() == fileTransQueue, @"Invoked on incorrect queue");
+	
+	if (discoTimer == NULL)
+	{
+		discoTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, fileTransQueue);
+		
+		dispatch_time_t tt = dispatch_time(DISPATCH_TIME_NOW, (timeout * NSEC_PER_SEC));
+		
+		dispatch_source_set_timer(discoTimer, tt, DISPATCH_TIME_FOREVER, 0.1);
+		dispatch_resume(discoTimer);
+	}
+	else
+	{
+		dispatch_time_t tt = dispatch_time(DISPATCH_TIME_NOW, (timeout * NSEC_PER_SEC));
+		
+		dispatch_source_set_timer(discoTimer, tt, DISPATCH_TIME_FOREVER, 0.1);
+	}
+}
+
+- (void)setupDiscoTimerForFTRequest
+{
+    [self setupDiscoTimer:180.0];
+    dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
+        
+        // 等待接收方回应超时<三分钟传输超时>
+		[self didFailSendFile];
+        
+	}});
+}
+
+- (void)setupDiscoTimerForStreamHost
+{
+    [self setupDiscoTimer:30.0];
+    dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
+        
+        // 等待接收流主机超时<30s传输超时>
+		[self didFailRecFile];
+        
+	}});
+}
+
+- (void)cancelTimer
+{
+    if (discoTimer)
+	{
+		dispatch_source_cancel(discoTimer);
+		dispatch_release(discoTimer);
+	}
+}
+
+- (void)cleanUpTimer
+{
+    if (discoTimer)
+	{
+		dispatch_source_cancel(discoTimer);
+		dispatch_release(discoTimer);
+		discoTimer = NULL;
+	}
+}
+
+#pragma mark -
 #pragma mark XMPPStream Delegate
 
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
@@ -190,6 +269,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
                     if (feature && [feature.xmlns isEqualToString:@"http://jabber.org/protocol/feature-neg"])
                     {
                         // 开始发送文件
+                        [self cleanUpTimer];
                         _iqState = IQStreamMethodSubmitState;
                         DEBUG_METHOD(@"--初始方开始发送文件--");
                         [self didSendFile];
@@ -205,10 +285,10 @@ typedef  NS_ENUM( NSInteger, IQStateType)
             if ([inIq.type isEqualToString:@"error"])
             {
                 DEBUG_METHOD(@"--对方拒绝接受文件传输--");
+                [self cleanUpTimer];
                 _iqState = IQStreamMethodAUTNErrorState;
                 [self didFailSendFile];
             }
-           
         }//if
     }
     
@@ -219,6 +299,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         NSXMLElement *query = [inIq elementForName:@"query"];
         if ( query && [@"http://jabber.org/protocol/bytestreams" isEqualToString:[query xmlns]])
         {
+            [self cleanUpTimer];
             DEBUG_METHOD(@"--目标方接受主机端口和ip--");
             if ([TURNSocket isNewStartTURNRequest:inIq])
             {
@@ -291,6 +372,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     
     if (_isSendingFile)
     {
+        _writeLen = 0;
         _inputStream = [[NSInputStream alloc]initWithFileAtPath:_fileModel.filePath];
         [_inputStream open];
         
@@ -312,6 +394,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     }
     else
     {
+        _receiveLen = 0;
         NSString *fullPath = [self fullPath:[self documentPath] fileName:_fileModel.fileName];
         if (fullPath == nil || ![self writeFileToPath:fullPath])
         {
@@ -324,7 +407,6 @@ typedef  NS_ENUM( NSInteger, IQStateType)
             DEBUG_STR(@"----开始读数据-----");
             _outputStream = [[NSOutputStream alloc]initToFileAtPath:fullPath append:YES];
             [_outputStream open];
-            _receiveLen = 0;
             [socket readDataWithTimeout:-1 tag:2];
         }
     }
@@ -347,9 +429,23 @@ typedef  NS_ENUM( NSInteger, IQStateType)
             [sock readDataWithTimeout:-1 tag:2];
             _receiveLen += writelen;
             
+            // 更新进度条
+            CGFloat progressValue = (CGFloat)_receiveLen/(_fileModel.fileSize);
+            DEBUG_METHOD(@"----progressValue:%f",progressValue);
+            dispatch_async(delegateQueue, ^{
+                @autoreleasepool {
+                    
+                    if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didUpdateUI:)])
+                    {
+                        [_delegate xmppFileTrans:self didUpdateUI:progressValue];
+                    }
+                }
+            });
+            
             if (_receiveLen == _fileModel.fileSize)
             {
-                NSLog(@"---接收数据完成---");
+                DEBUG_STR(@"---接收数据完成---");
+                _isDoneTransFile = YES;
                 [_outputStream close];
                 [sock disconnect];
                 [self didSuccessReceiveFile];
@@ -357,6 +453,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         }//else
     }
 }
+
 
 - (void)socket:(GCDAsyncSocket *)sock didWriteDataWithTag:(long)tag
 {
@@ -368,6 +465,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         if (len == -1)
         {
             DEBUG_STR(@"---写数据出错---");
+            
             [_inputStream close];
             [sock disconnect];
             [self didFailSendFile];
@@ -375,22 +473,47 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         else  if (len == 0)
         {
             DEBUG_STR(@"---写数据完成---");
+            _isDoneTransFile = YES;
             [_inputStream close];
             [sock disconnect];
             [self didSuccessSendFile];
         }
         else
         {
-            DEBUG_STR(@"---写数据---%ld",(long)len);
+            _writeLen += len;
+            
             NSData *data = [NSData dataWithBytes:buffer length:len];
             [sock writeData:data withTimeout:-1 tag:1];
+            
+            // 更新进度条
+            CGFloat progressValue = (CGFloat)_writeLen/_fileModel.fileSize;
+            dispatch_async(delegateQueue, ^{
+                @autoreleasepool {
+                    
+                    if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didUpdateUI:)])
+                    {
+                        [_delegate xmppFileTrans:self didUpdateUI:progressValue];
+                    }
+                }});//dispatch_async
         }
-    }
+        
+    }//if tag
 }
 
 - (void)socketDidDisconnect:(GCDAsyncSocket *)sock withError:(NSError *)err
 {
-    
+    DEBUG_METHOD(@"--%s--",__FUNCTION__);
+    if (!_isDoneTransFile)
+    {
+        if (_isSendingFile)
+        {
+            [self didFailSendFile];
+        }
+        else
+        {
+            [self didFailRecFile];
+        }
+    }
 }
 
 - (void)turnSocketDidFail:(TURNSocket *)sender
@@ -405,7 +528,6 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     {
         [self didFailRecFile];
     }
-
 }
 
 #pragma mark -
@@ -444,10 +566,15 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     dispatch_async(delegateQueue, ^{
         @autoreleasepool {
             
-        if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didSuccessSendFile:)])
-        {
-            [_delegate xmppFileTrans:self didSuccessSendFile:_fileModel];
-        }
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didSuccessSendFile:)])
+            {
+                [_delegate xmppFileTrans:self didSuccessSendFile:_fileModel];
+            }
+            
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didUpdateUI:)])
+            {
+                [_delegate xmppFileTrans:self didUpdateUI:1.0];
+            }
             
         }});
     [self cleanUp];
@@ -505,6 +632,10 @@ typedef  NS_ENUM( NSInteger, IQStateType)
                 [_delegate xmppFileTrans:self didSuccessReceiveFile:_fileModel];
             }
             
+            if (_delegate && [_delegate respondsToSelector:@selector(xmppFileTrans:didUpdateUI:)])
+            {
+                [_delegate xmppFileTrans:self didUpdateUI:1.0];
+            }
         }});
     [self cleanUp];
 }
@@ -527,32 +658,12 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 - (void)cleanUp
 {
     [_xmppStream removeDelegate:self delegateQueue:fileTransQueue];
+    [self cleanUpTimer];
 }
 
 #pragma mark -
 #pragma mark XEP-096
 
-// 发送协商请求<请求发送文件>
-/*
- <iq type='set' id='offer1' to='receiver@jabber.org/resource'>
-     <si xmlns='http://jabber.org/protocol/si'
-         id='a0'
-         mime-type='text/plain'
-         profile='http://jabber.org/protocol/si/profile/file-transfer'>
-     <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
-           name='test.txt'
-           size='1022'/>
-         <feature xmlns='http://jabber.org/protocol/feature-neg'>
-             <x xmlns='jabber:x:data' type='form'>
-                 <field var='stream-method' type='list-single'>
-                     <option><value>http://jabber.org/protocol/bytestreams</value></option>
-                     <option><value>http://jabber.org/protocol/ibb</value></option>
-                 </field>
-             </x>
-         </feature>
-     </si>
- </iq>
- */
 /**
  * @method
  * @brief 发送请求传输文件，请求携带文件信息
@@ -577,6 +688,27 @@ typedef  NS_ENUM( NSInteger, IQStateType)
                            hash:(NSString*)hashCode
                            date:(NSString*)fileDate
 {
+    // 发送协商请求<请求发送文件>
+    /*
+     <iq type='set' id='offer1' to='receiver@jabber.org/resource'>
+         <si xmlns='http://jabber.org/protocol/si'
+             id='a0'
+             mime-type='text/plain'
+             profile='http://jabber.org/protocol/si/profile/file-transfer'>
+         <file xmlns='http://jabber.org/protocol/si/profile/file-transfer'
+                name='test.txt'
+                size='1022'/>
+             <feature xmlns='http://jabber.org/protocol/feature-neg'>
+                 <x xmlns='jabber:x:data' type='form'>
+                     <field var='stream-method' type='list-single'>
+                         <option><value>http://jabber.org/protocol/bytestreams</value></option>
+                         <option><value>http://jabber.org/protocol/ibb</value></option>
+                     </field>
+                 </x>
+             </feature>
+         </si>
+     </iq>
+     */
     _iqState = IQStreamMethodListSingleState;
     
     NSString *uuid = [_xmppStream generateUUID];
@@ -628,20 +760,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 }
 
 
-// 发送代理响应<接受文件传输>
-/*
- <iq type='result' to='sender@jabber.org/resource' id='offer1'>
-     <si xmlns='http://jabber.org/protocol/si'>
-         <feature xmlns='http://jabber.org/protocol/feature-neg'>
-             <x xmlns='jabber:x:data' type='submit'>
-                 <field var='stream-method'>
-                    <value>http://jabber.org/protocol/bytestreams</value>
-                 </field>
-             </x>
-         </feature>
-     </si>
- </iq>
- */
+
 /**
  * @method 目标方接收文件传输
  * @param  inIQ 目标方式收到的IQ请求
@@ -649,6 +768,21 @@ typedef  NS_ENUM( NSInteger, IQStateType)
  */
 - (void)sendReceiveFiletransferResponse:(XMPPIQ*)inIQ
 {
+    // 发送代理响应<接受文件传输>
+    /*
+     <iq type='result' to='sender@jabber.org/resource' id='offer1'>
+     <si xmlns='http://jabber.org/protocol/si'>
+     <feature xmlns='http://jabber.org/protocol/feature-neg'>
+     <x xmlns='jabber:x:data' type='submit'>
+     <field var='stream-method'>
+     <value>http://jabber.org/protocol/bytestreams</value>
+     </field>
+     </x>
+     </feature>
+     </si>
+     </iq>
+     */
+    
     DEBUG_METHOD(@"---%s---",__FUNCTION__);
     
     _iqState = IQStreamMethodSubmitState;
@@ -693,14 +827,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 }
 
 
-// 发送拒绝文件传输响应信息
-/*
- <iq id='' to='' from='' type='error'>
-     <error code='403' type='AUTH'>
-        <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
-     </error>
- </iq>
- */
+
 /**
  * @method 目标方拒绝文件传输
  * @param  inIQ 目标方式收到的IQ请求
@@ -708,6 +835,15 @@ typedef  NS_ENUM( NSInteger, IQStateType)
  */
 - (void)sendRejectFileTransferResponse:(XMPPIQ*)inIQ
 {
+    // 发送拒绝文件传输响应信息
+    /*
+     <iq id='' to='' from='' type='error'>
+     <error code='403' type='AUTH'>
+     <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
+     </error>
+     </iq>
+     */
+    
     DEBUG_METHOD(@"---%s---",__FUNCTION__);
     _iqState = IQStreamMethodAUTNErrorState;
     _serverUUID = inIQ.elementID;
@@ -743,6 +879,9 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 
 
 @interface XMPPFileTransfer() <xmppFileDelegate>
+{
+    
+}
 @property (nonatomic, strong) NSMutableArray *fileTsQueueArray;
 @end
 
@@ -837,8 +976,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
 {
     DEBUG_METHOD(@"----%s--",__FUNCTION__);
-    NSString *type = inIq.type;
-    if ([type isEqualToString:@"set"])
+    if ([inIq.type isEqualToString:@"set"])
     {
         NSXMLElement *si = [inIq elementForName:@"si"];
         if (si && [si.xmlns isEqualToString:@"http://jabber.org/protocol/si"])
@@ -856,6 +994,9 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     }
     return YES;
 }
+
+#pragma mark -
+#pragma mark 文件传输协议
 
 - (void)xmppFileTrans:(XMPPSingleFTOperation *)sender didFailRecFile:(XmppFileModel *)file
 {
@@ -910,14 +1051,26 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     }
 }
 
-- (void)xmppFileTrans:(XMPPSingleFTOperation *)sender didUpdateUI:(NSUInteger)progressValue
+- (void)xmppFileTrans:(XMPPSingleFTOperation *)sender didUpdateUI:(CGFloat)progressValue
 {
-    DEBUG_METHOD(@"--%s---",__FUNCTION__);
+    if (sender.fileModel.isOutGoing)
+    {
+         DEBUG_METHOD(@"--%s--发送-%f",__FUNCTION__,progressValue);
+    }
+    else
+    {
+         DEBUG_METHOD(@"--%s--接收-%f",__FUNCTION__,progressValue);
+    }
+   
 }
 
 - (void)xmppFileTrans:(XMPPSingleFTOperation *)sender willReceiveFile:(XmppFileModel *)file
 {
     DEBUG_METHOD(@"--%s---",__FUNCTION__);
+    if (sender.fileModel.fileType == XMPP_FILE_IMAGE)
+    {
+        //自动接收图片
+    }
     [sender sendReceiveFiletransferResponse:sender.receiveIQ];
 }
 
