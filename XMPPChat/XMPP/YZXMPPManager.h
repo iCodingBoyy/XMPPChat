@@ -56,8 +56,10 @@ typedef void (^AuthError)(XMPPErrorCode errorCode);
 @protocol YZXMPPMgrDelegate;
 
 
-@interface YZXMPPManager : NSObject
-
+@interface YZXMPPManager : NSObject 
+{
+    
+}
 @property (nonatomic, strong, readonly) XMPPStream *xmppStream;
 @property (nonatomic, strong, readonly) XMPPReconnect *xmppReconnect;
 @property (nonatomic, strong, readonly) XMPPRoster *xmppRoster;
@@ -69,10 +71,7 @@ typedef void (^AuthError)(XMPPErrorCode errorCode);
 @property (nonatomic, strong, readonly) XMPPvCardCoreDataStorage *xmppvCardStorage;
 @property (nonatomic, strong, readonly) XMPPMessageArchivingCoreDataStorage *xmppMessageArchivingCoreDataStorage;
 @property (nonatomic, strong, readonly) XMPPMessageArchiving *xmppMessageArchiving;
-@property (nonatomic, strong, readonly) XMPPFileTransfer *filetransfer;
-
-@property (nonatomic, assign) XMPPOperation xmppOperation;
-@property (nonatomic, strong) NSData *sendData;
+@property (nonatomic, strong, readonly) XMPPFileTransfer *xmppFiletransfer;
 
 @property (nonatomic, OBJ_WEAK) id<YZXMPPMgrDelegate> delegate;
 
@@ -100,7 +99,6 @@ typedef void (^AuthError)(XMPPErrorCode errorCode);
 // 花名册查询
 - (void)fethcRosterOnServer;
 - (void)fetchRoster;
-- (void)fetchUserWithXMPPJID:(NSString*)searchField;
 
 - (void)xmppAddFriendsSubscribe:(NSString*)name;
 - (void)removeBuddy:(NSString*)name;

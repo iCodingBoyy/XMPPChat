@@ -719,6 +719,7 @@ static NSMutableArray *proxyCandidates;
 
 - (void)processRequestResponse:(XMPPIQ *)iq
 {
+    NSLog(@"----streamhost-used--%@",iq);
 	XMPPLogTrace();
 	
 	// Target has replied - hopefully they've been able to connect to one of the streamhosts
@@ -763,6 +764,7 @@ static NSMutableArray *proxyCandidates;
 	else
 	{
 		// Target was unable to connect to any of the streamhosts we sent it
+        NSLog(@"---未发现目标方使用的流主机---");
 		[self fail];
 	}
 }
@@ -779,10 +781,13 @@ static NSMutableArray *proxyCandidates;
 		activated = [type caseInsensitiveCompare:@"result"] == NSOrderedSame;
 	}
 	
-	if (activated) {
+	if (activated)
+    {
 		[self succeed];
 	}
-	else {
+	else
+    {
+        NSLog(@"----流主机激活失败---");
 		[self fail];
 	}
 }
@@ -877,7 +882,7 @@ static NSMutableArray *proxyCandidates;
 			// We were unable to find a single proxy server from our list
 			
 			XMPPLogVerbose(@"%@: No proxies found", THIS_FILE);
-			
+			NSLog(@"---未能查找到代理----");
 			[self fail];
 		}
 	}
@@ -1028,6 +1033,7 @@ static NSMutableArray *proxyCandidates;
 	}
 	else
 	{
+        NSLog(@"----无法连接到目标流主机---");
 		[self sendError];
 		[self fail];
 	}
@@ -1045,6 +1051,7 @@ static NSMutableArray *proxyCandidates;
 	if (![asyncSocket connectToHost:proxyHost onPort:proxyPort withTimeout:TIMEOUT_CONNECT error:&err])
 	{
 		XMPPLogError(@"TURNSocket: initiatorConnect: err: %@", err);
+        NSLog(@"----初始方连接流主机失败---");
 		[self fail];
 	}
 }
@@ -1311,6 +1318,7 @@ static NSMutableArray *proxyCandidates;
 	}
 	else if (state == STATE_INITIATOR_CONNECT)
 	{
+        NSLog(@"----socket断开连接----");
 		[self fail];
 	}
 }
@@ -1443,6 +1451,7 @@ static NSMutableArray *proxyCandidates;
 		// This probably means the other endpoint crashed, or a network error occurred.
 		// In either case, we can consider this a failure, and recycle the memory associated with this object.
 		
+        NSLog(@"---传输超时失败--");
 		[self fail];
 	}
 }

@@ -332,11 +332,31 @@ typedef enum XMPP_FILE_TYPE
     [identity addAttributeWithName:@"name" stringValue:@"SOCKS5 Bytestreams Service"];
     
     NSXMLElement *feature = [NSXMLElement elementWithName:@"feature"];
-    [feature addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/bytestreams"];
+    [feature addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/si/profile/file-transfer"];
+    
+    NSXMLElement *feature1 = [NSXMLElement elementWithName:@"feature"];
+    [feature1 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/disco#items"];
+    
+    NSXMLElement *feature2 = [NSXMLElement elementWithName:@"feature"];
+    [feature2 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/ibb"];
+    
+    NSXMLElement *feature3 = [NSXMLElement elementWithName:@"feature"];
+    [feature3 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/si"];
+    
+    NSXMLElement *feature4 = [NSXMLElement elementWithName:@"feature"];
+    [feature4 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/bytestreams"];
+    
+    NSXMLElement *feature5 = [NSXMLElement elementWithName:@"feature"];
+    [feature5 addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/disco#info"];
     
     NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#info"];
     [query addChild:identity];
     [query addChild:feature];
+    [query addChild:feature1];
+    [query addChild:feature2];
+    [query addChild:feature3];
+    [query addChild:feature4];
+    [query addChild:feature5];
     
     
     XMPPIQ *iq = [XMPPIQ iqWithType:@"result" to:inIQ.from elementID:inIQ.elementID child:query];

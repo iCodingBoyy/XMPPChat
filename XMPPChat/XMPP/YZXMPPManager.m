@@ -14,11 +14,12 @@
 #define KXMPPLOGINPWD @"KXMPPLOGINPWD"
 
 
-@interface YZXMPPManager() <XMPPRosterDelegate,XMPPMessageArchivingStorage>
+@interface YZXMPPManager() <XMPPRosterDelegate,XMPPMessageArchivingStorage,UIApplicationDelegate>
 {
     BOOL allowSelfSignedCertificates;
 	BOOL allowSSLHostNameMismatch;
 }
+@property (nonatomic, assign) XMPPOperation xmppOperation;
 @property (nonatomic, strong) NSString *passWord;
 @property (nonatomic, assign) BOOL isXmppConnected;
 @property (nonatomic,   copy) AuthComplete authCompleteBlock;
@@ -94,13 +95,9 @@
 //    [_xmppCapabilities addDelegate:self delegateQueue:dispatch_get_main_queue()];
     [_xmppMessageArchiving addDelegate:self delegateQueue:dispatch_get_main_queue()];
     
-    _filetransfer = [[XMPPFileTransfer alloc]init];
-    [_filetransfer addDelegate:self delegateQueue:dispatch_get_main_queue()];
-    [_filetransfer activate:_xmppStream];
-    
-//    XMPPMessageDeliveryReceipts * deliveryReceiptsModule = [[XMPPMessageDeliveryReceipts alloc] init];
-//    deliveryReceiptsModule.autoSendMessageDeliveryRequests = YES;
-//    [deliveryReceiptsModule activate:_xmppStream];
+    _xmppFiletransfer = [[XMPPFileTransfer alloc]init];
+    [_xmppFiletransfer addDelegate:self delegateQueue:dispatch_get_main_queue()];
+    [_xmppFiletransfer activate:_xmppStream];
 
     
     // activate
@@ -115,10 +112,6 @@
 	allowSSLHostNameMismatch = YES;
 }
 
-- (void)sendImage:(NSData*)imageData Jid:(XMPPJID*)toJID
-{
-    [_filetransfer sendImageWithData:imageData toJID:toJID];
-}
 
 - (void)releaseXMPPStream
 {
@@ -132,7 +125,7 @@
     [_xmppvCardAvatarModule deactivate];
     [_xmppCapabilities deactivate];
     [_xmppMessageArchiving deactivate];
-    [_filetransfer deactivate];
+    [_xmppFiletransfer deactivate];
     
     [_xmppStream disconnect];
     
@@ -146,9 +139,89 @@
     _xmppCapabilities = nil;
     _xmppCapabilitiesStorage = nil;
     _xmppMessageArchiving = nil;
-    _filetransfer = nil;
+    _xmppFiletransfer = nil;
 }
 
+#pragma mark -
+#pragma mark online/offline
+
+- (void)goOnline
+{
+    XMPPPresence *presence = [XMPPPresence presence];
+    [_xmppStream sendElement:presence];
+}
+
+- (void)gooffline
+{
+    XMPPPresence *xmppPresence = [XMPPPresence presenceWithType:@"unavailable"];
+    [_xmppStream sendElement:xmppPresence];
+}
+
+#pragma mark -
+#pragma mark connect/disconnet
+
+- (BOOL)connect
+{
+    if (_xmppStream == nil)
+    {
+        return NO;
+    }
+    
+    if (![_xmppStream isDisconnected])
+    {
+        return YES;
+    }
+    
+    NSString *loginName = [[NSUserDefaults standardUserDefaults]stringForKey:KXMPPLoginNAME];
+    NSString *loginPwd = [[NSUserDefaults standardUserDefaults]stringForKey:KXMPPLOGINPWD];
+    
+    if (loginName == nil || loginPwd == nil)
+    {
+        return NO;
+    }
+    
+    XMPPJID *xmppJID = [XMPPJID jidWithUser:loginName domain:KXMPPHostName resource:KXMPPResource];
+    [_xmppStream setMyJID:xmppJID];
+    
+    NSError *error = nil;
+    if (![_xmppStream connectWithTimeout:KXMPPConnectTimeOut error:&error])
+    {
+        return NO;
+    }
+    
+    return YES;
+}
+
+- (void)disconnect
+{
+    [self gooffline];
+    [_xmppStream disconnect];
+    [_xmppvCardTempModule removeDelegate:self];
+}
+
+
+#pragma mark -
+#pragma mark UIApplicationDelegate
+
+- (void)applicationDidEnterBackground:(UIApplication *)application
+{
+    DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
+    
+#if TARGET_IPHONE_SIMULATOR
+	DDLogError(@"The iPhone simulator does not process background network traffic. "
+			   @"Inbound traffic is queued until the keepAliveTimeout:handler: fires.");
+#endif
+    
+	if ([application respondsToSelector:@selector(setKeepAliveTimeout:handler:)])
+	{
+		[application setKeepAliveTimeout:600 handler:^{
+			
+			DDLogVerbose(@"KeepAliveHandler");
+			// Do other keep alive stuff here.
+		}];
+	}
+
+}
 
 #pragma mark -
 #pragma mark NSManagedObjectContext
@@ -163,7 +236,10 @@
 	return [_xmppCapabilitiesStorage mainThreadManagedObjectContext];
 }
 
-
+- (void)sendImage:(NSData*)imageData Jid:(XMPPJID*)toJID
+{
+    [_xmppFiletransfer sendImageWithData:imageData toJID:toJID];
+}
 
 #pragma mark -
 #pragma mark 登录
@@ -311,47 +387,10 @@
 }
 
 
+
+
 #pragma mark -
-#pragma mark connect/disconnet
-
-- (BOOL)connect
-{
-    if (_xmppStream == nil)
-    {
-        return NO;
-    }
-    
-    if (![_xmppStream isDisconnected])
-    {
-        return YES;
-    }
-    
-    NSString *loginName = [[NSUserDefaults standardUserDefaults]stringForKey:KXMPPLoginNAME];
-    NSString *loginPwd = [[NSUserDefaults standardUserDefaults]stringForKey:KXMPPLOGINPWD];
-    
-    if (loginName == nil || loginPwd == nil)
-    {
-        return NO;
-    }
-    
-    XMPPJID *xmppJID = [XMPPJID jidWithUser:loginName domain:KXMPPHostName resource:KXMPPResource];
-    [_xmppStream setMyJID:xmppJID];
-    
-    NSError *error = nil;
-    if (![_xmppStream connectWithTimeout:KXMPPConnectTimeOut error:&error])
-    {
-        return NO;
-    }
-    
-    return YES;
-}
-
-- (void)disconnect
-{
-    [self gooffline];
-    [_xmppStream disconnect];
-    [_xmppvCardTempModule removeDelegate:self];
-}
+#pragma mark xmppDelegate
 
 - (NSString *)xmppStream:(XMPPStream *)sender alternativeResourceForConflictingResource:(NSString *)conflictingResource
 {
@@ -473,20 +512,7 @@
 }
 
 
-#pragma mark -
-#pragma mark online/offline
 
-- (void)goOnline
-{
-    XMPPPresence *presence = [XMPPPresence presence];
-    [_xmppStream sendElement:presence];
-}
-
-- (void)gooffline
-{
-    XMPPPresence *xmppPresence = [XMPPPresence presenceWithType:@"unavailable"];
-    [_xmppStream sendElement:xmppPresence];
-}
 
 
 #pragma mark -
@@ -541,17 +567,9 @@
             }
         }
     }
-    return YES;
+    return NO;
 }
-#define PresenceServerURL @"http://www.savvy-tech.net:9090/plugins/presence/status"
 
-//- (BOOL)sendFile:(NSData *)data toUser:(NSString *)xmppUser
-//{
-//    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/Server",xmppUser,KXMPPHostName];
-//    NSString *fileName = [NSString stringWithFormat:@"photo%@.png",[_xmppStream generateUUID]];
-//    XMPPJID *senderJID = [XMPPJID jidWithString:xmppJIDString];
-//    return YES;
-//}
 
 #pragma mark -
 #pragma mark 好友管理
@@ -581,46 +599,10 @@
 - (void)xmppRoster:(XMPPRoster *)sender didReceivePresenceSubscriptionRequest:(XMPPPresence *)presence
 {
     DDLogVerbose(@"%@: %@", THIS_FILE, THIS_METHOD);
-//
     if (presence.from)
     {
         [_xmppRoster acceptPresenceSubscriptionRequestFrom:presence.from andAddToRoster:YES];
     }
-//
-//    XMPPUserCoreDataStorageObject *user = [_xmppRosterStorage userForJID:[presence from]
-//	                                                         xmppStream:_xmppStream
-//	                                               managedObjectContext:[self mgdObjContext_roster]];
-//	
-//	NSString *body = nil;
-//	
-//	if (![user.displayName isEqualToString:presence.fromStr])
-//	{
-//		body = [NSString stringWithFormat:@"Buddy request from %@ <%@>", user.displayName, presence.fromStr];
-//	}
-//	else
-//	{
-//		body = [NSString stringWithFormat:@"Buddy request from %@", user.displayName];
-//	}
-//	
-//	
-//	if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive)
-//	{
-//		UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:user.displayName
-//		                                                    message:body
-//		                                                   delegate:nil
-//		                                          cancelButtonTitle:@"Not implemented"
-//		                                          otherButtonTitles:nil];
-//		[alertView show];
-//	}
-//	else
-//	{
-//		UILocalNotification *localNotification = [[UILocalNotification alloc] init];
-//		localNotification.alertAction = @"Not implemented";
-//		localNotification.alertBody = body;
-//		
-//		[[UIApplication sharedApplication] presentLocalNotificationNow:localNotification];
-//	}
-//
 }
 
 - (void)xmppRoster:(XMPPRoster *)sender didReceiveRosterItem:(DDXMLElement *)item

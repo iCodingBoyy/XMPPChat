@@ -48,11 +48,6 @@
 		6B4ED21A18EC127100E69BD1 /* YZChatFaceBoardView.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED21518EC127100E69BD1 /* YZChatFaceBoardView.m */; };
 		6B4ED21B18EC127100E69BD1 /* YZChatToolBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED21718EC127100E69BD1 /* YZChatToolBarView.m */; };
 		6B4ED21C18EC127100E69BD1 /* YZChatToolBoxView.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED21918EC127100E69BD1 /* YZChatToolBoxView.m */; };
-		6B4ED21F18EC129F00E69BD1 /* YZChatMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED21E18EC129F00E69BD1 /* YZChatMessageCell.m */; };
-		6B4ED22518EC12DC00E69BD1 /* YZChatPictureCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED22418EC12DC00E69BD1 /* YZChatPictureCell.m */; };
-		6B4ED22818EC12F200E69BD1 /* YZChatVideoCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED22718EC12F200E69BD1 /* YZChatVideoCell.m */; };
-		6B4ED22B18EC130700E69BD1 /* YZChatContactCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED22A18EC130700E69BD1 /* YZChatContactCell.m */; };
-		6B4ED22E18EC131D00E69BD1 /* YZChatLocationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B4ED22D18EC131D00E69BD1 /* YZChatLocationCell.m */; };
 		6B65191B1922079400FCBF87 /* XMPPFileTransfer.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B65191A1922079400FCBF87 /* XMPPFileTransfer.m */; };
 		6B6BF03A18E9445E00E05F5E /* RosterViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B6BF03918E9445E00E05F5E /* RosterViewController.m */; };
 		6B6BF03D18E944B000E05F5E /* RecentMsgViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B6BF03C18E944B000E05F5E /* RecentMsgViewController.m */; };
@@ -73,6 +68,11 @@
 		6B6BF07518E967F800E05F5E /* user_image@2x.jpeg in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07418E967F800E05F5E /* user_image@2x.jpeg */; };
 		6B6BF07818E982ED00E05F5E /* delete_btn_nor@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07618E982ED00E05F5E /* delete_btn_nor@2x.png */; };
 		6B6BF07918E982ED00E05F5E /* delete_btn_press@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B6BF07718E982ED00E05F5E /* delete_btn_press@2x.png */; };
+		6B84F476192B38F600E1F8D2 /* XmppRecentSession.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B84F475192B38F600E1F8D2 /* XmppRecentSession.m */; };
+		6B84F47C192B3D9000E1F8D2 /* UIImage+YZMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B84F47B192B3D9000E1F8D2 /* UIImage+YZMessage.m */; };
+		6B84F482192B4D5D00E1F8D2 /* YZMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B84F481192B4D5D00E1F8D2 /* YZMessage.m */; };
+		6B84F488192B4E6300E1F8D2 /* YZChatMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B84F487192B4E6300E1F8D2 /* YZChatMessageCell.m */; };
+		6B84F48F192B562500E1F8D2 /* XmppMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B84F48E192B562500E1F8D2 /* XmppMessage.m */; };
 		6B8F8A3018F52FE200DBC675 /* MKEntryPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2C18F52FE200DBC675 /* MKEntryPanel.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		6B8F8A3118F52FE200DBC675 /* MKEntryPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */; };
 		6B8F8A3218F52FE200DBC675 /* TopBar.png in Resources */ = {isa = PBXBuildFile; fileRef = 6B8F8A2E18F52FE200DBC675 /* TopBar.png */; };
@@ -150,16 +150,6 @@
 		6B4ED21718EC127100E69BD1 /* YZChatToolBarView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatToolBarView.m; sourceTree = "<group>"; };
 		6B4ED21818EC127100E69BD1 /* YZChatToolBoxView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatToolBoxView.h; sourceTree = "<group>"; };
 		6B4ED21918EC127100E69BD1 /* YZChatToolBoxView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatToolBoxView.m; sourceTree = "<group>"; };
-		6B4ED21D18EC129F00E69BD1 /* YZChatMessageCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatMessageCell.h; sourceTree = "<group>"; };
-		6B4ED21E18EC129F00E69BD1 /* YZChatMessageCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatMessageCell.m; sourceTree = "<group>"; };
-		6B4ED22318EC12DC00E69BD1 /* YZChatPictureCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatPictureCell.h; sourceTree = "<group>"; };
-		6B4ED22418EC12DC00E69BD1 /* YZChatPictureCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatPictureCell.m; sourceTree = "<group>"; };
-		6B4ED22618EC12F200E69BD1 /* YZChatVideoCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatVideoCell.h; sourceTree = "<group>"; };
-		6B4ED22718EC12F200E69BD1 /* YZChatVideoCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatVideoCell.m; sourceTree = "<group>"; };
-		6B4ED22918EC130700E69BD1 /* YZChatContactCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatContactCell.h; sourceTree = "<group>"; };
-		6B4ED22A18EC130700E69BD1 /* YZChatContactCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatContactCell.m; sourceTree = "<group>"; };
-		6B4ED22C18EC131D00E69BD1 /* YZChatLocationCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatLocationCell.h; sourceTree = "<group>"; };
-		6B4ED22D18EC131D00E69BD1 /* YZChatLocationCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatLocationCell.m; sourceTree = "<group>"; };
 		6B6519191922079400FCBF87 /* XMPPFileTransfer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XMPPFileTransfer.h; sourceTree = "<group>"; };
 		6B65191A1922079400FCBF87 /* XMPPFileTransfer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XMPPFileTransfer.m; sourceTree = "<group>"; };
 		6B6BF03818E9445E00E05F5E /* RosterViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RosterViewController.h; sourceTree = "<group>"; };
@@ -188,6 +178,17 @@
 		6B6BF07418E967F800E05F5E /* user_image@2x.jpeg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "user_image@2x.jpeg"; sourceTree = "<group>"; };
 		6B6BF07618E982ED00E05F5E /* delete_btn_nor@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "delete_btn_nor@2x.png"; sourceTree = "<group>"; };
 		6B6BF07718E982ED00E05F5E /* delete_btn_press@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "delete_btn_press@2x.png"; sourceTree = "<group>"; };
+		6B84F474192B38F600E1F8D2 /* XmppRecentSession.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XmppRecentSession.h; sourceTree = "<group>"; };
+		6B84F475192B38F600E1F8D2 /* XmppRecentSession.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XmppRecentSession.m; sourceTree = "<group>"; };
+		6B84F47A192B3D9000E1F8D2 /* UIImage+YZMessage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIImage+YZMessage.h"; sourceTree = "<group>"; };
+		6B84F47B192B3D9000E1F8D2 /* UIImage+YZMessage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIImage+YZMessage.m"; sourceTree = "<group>"; };
+		6B84F480192B4D5D00E1F8D2 /* YZMessage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZMessage.h; sourceTree = "<group>"; };
+		6B84F481192B4D5D00E1F8D2 /* YZMessage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZMessage.m; sourceTree = "<group>"; };
+		6B84F486192B4E6300E1F8D2 /* YZChatMessageCell.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = YZChatMessageCell.h; sourceTree = "<group>"; };
+		6B84F487192B4E6300E1F8D2 /* YZChatMessageCell.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = YZChatMessageCell.m; sourceTree = "<group>"; };
+		6B84F48D192B562500E1F8D2 /* XmppMessage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = XmppMessage.h; sourceTree = "<group>"; };
+		6B84F48E192B562500E1F8D2 /* XmppMessage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = XmppMessage.m; sourceTree = "<group>"; };
+		6B84F491192B659400E1F8D2 /* YZEnumDefine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YZEnumDefine.h; sourceTree = "<group>"; };
 		6B8F8A2B18F52FE200DBC675 /* MKEntryPanel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MKEntryPanel.h; sourceTree = "<group>"; };
 		6B8F8A2C18F52FE200DBC675 /* MKEntryPanel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MKEntryPanel.m; sourceTree = "<group>"; };
 		6B8F8A2D18F52FE200DBC675 /* MKEntryPanel.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = MKEntryPanel.xib; sourceTree = "<group>"; };
@@ -324,6 +325,10 @@
 			isa = PBXGroup;
 			children = (
 				6B1814F419060EA700443A2F /* XmppChat.xcdatamodeld */,
+				6B84F48D192B562500E1F8D2 /* XmppMessage.h */,
+				6B84F48E192B562500E1F8D2 /* XmppMessage.m */,
+				6B84F474192B38F600E1F8D2 /* XmppRecentSession.h */,
+				6B84F475192B38F600E1F8D2 /* XmppRecentSession.m */,
 			);
 			path = CoreData;
 			sourceTree = "<group>";
@@ -490,6 +495,13 @@
 				6B1814F319060E8C00443A2F /* CoreData */,
 				6BDE825818E51D7B00356E41 /* YZXMPPManager.h */,
 				6BDE825918E51D7B00356E41 /* YZXMPPManager.m */,
+				6B84F480192B4D5D00E1F8D2 /* YZMessage.h */,
+				6B84F481192B4D5D00E1F8D2 /* YZMessage.m */,
+				6B84F486192B4E6300E1F8D2 /* YZChatMessageCell.h */,
+				6B84F487192B4E6300E1F8D2 /* YZChatMessageCell.m */,
+				6B84F491192B659400E1F8D2 /* YZEnumDefine.h */,
+				6B84F47A192B3D9000E1F8D2 /* UIImage+YZMessage.h */,
+				6B84F47B192B3D9000E1F8D2 /* UIImage+YZMessage.m */,
 				6B6519191922079400FCBF87 /* XMPPFileTransfer.h */,
 				6B65191A1922079400FCBF87 /* XMPPFileTransfer.m */,
 				6BB737AC18ED188C00F9B90A /* NSObject+PropertyListing.h */,
@@ -504,16 +516,6 @@
 				6B4ED21318EC125E00E69BD1 /* ToolBarView */,
 				6BFEB19218EA97FC00D14B17 /* YZChatViewController.h */,
 				6BFEB19318EA97FC00D14B17 /* YZChatViewController.m */,
-				6B4ED21D18EC129F00E69BD1 /* YZChatMessageCell.h */,
-				6B4ED21E18EC129F00E69BD1 /* YZChatMessageCell.m */,
-				6B4ED22318EC12DC00E69BD1 /* YZChatPictureCell.h */,
-				6B4ED22418EC12DC00E69BD1 /* YZChatPictureCell.m */,
-				6B4ED22618EC12F200E69BD1 /* YZChatVideoCell.h */,
-				6B4ED22718EC12F200E69BD1 /* YZChatVideoCell.m */,
-				6B4ED22918EC130700E69BD1 /* YZChatContactCell.h */,
-				6B4ED22A18EC130700E69BD1 /* YZChatContactCell.m */,
-				6B4ED22C18EC131D00E69BD1 /* YZChatLocationCell.h */,
-				6B4ED22D18EC131D00E69BD1 /* YZChatLocationCell.m */,
 			);
 			path = "聊天";
 			sourceTree = "<group>";
@@ -693,17 +695,17 @@
 			files = (
 				6BDE825A18E51D7B00356E41 /* YZXMPPManager.m in Sources */,
 				6BB737B418ED50CF00F9B90A /* YZTextField.m in Sources */,
-				6B4ED21F18EC129F00E69BD1 /* YZChatMessageCell.m in Sources */,
+				6B84F48F192B562500E1F8D2 /* XmppMessage.m in Sources */,
 				6B6BF07318E964DA00E05F5E /* LoginAndRegisterView.m in Sources */,
 				6BB737AE18ED188C00F9B90A /* NSObject+PropertyListing.m in Sources */,
-				6B4ED22B18EC130700E69BD1 /* YZChatContactCell.m in Sources */,
-				6B4ED22E18EC131D00E69BD1 /* YZChatLocationCell.m in Sources */,
 				6B6BF06418E9513F00E05F5E /* TPKeyboardAvoidingScrollView.m in Sources */,
 				6B13C38F18E51667002E3AF0 /* AppDelegate.m in Sources */,
 				6B65191B1922079400FCBF87 /* XMPPFileTransfer.m in Sources */,
+				6B84F47C192B3D9000E1F8D2 /* UIImage+YZMessage.m in Sources */,
 				6B1814F619060EA700443A2F /* XmppChat.xcdatamodeld in Sources */,
 				6BECF9CE18F6803900A717C9 /* YZRecentChatListCell.m in Sources */,
-				6B4ED22818EC12F200E69BD1 /* YZChatVideoCell.m in Sources */,
+				6B84F476192B38F600E1F8D2 /* XmppRecentSession.m in Sources */,
+				6B84F488192B4E6300E1F8D2 /* YZChatMessageCell.m in Sources */,
 				6BFEB19418EA97FC00D14B17 /* YZChatViewController.m in Sources */,
 				6B6BF03A18E9445E00E05F5E /* RosterViewController.m in Sources */,
 				6B13C38B18E51667002E3AF0 /* main.m in Sources */,
@@ -712,7 +714,7 @@
 				6B4ED21C18EC127100E69BD1 /* YZChatToolBoxView.m in Sources */,
 				6B4ED21A18EC127100E69BD1 /* YZChatFaceBoardView.m in Sources */,
 				6B4ED21B18EC127100E69BD1 /* YZChatToolBarView.m in Sources */,
-				6B4ED22518EC12DC00E69BD1 /* YZChatPictureCell.m in Sources */,
+				6B84F482192B4D5D00E1F8D2 /* YZMessage.m in Sources */,
 				6B6BF06518E9513F00E05F5E /* TPKeyboardAvoidingTableView.m in Sources */,
 				6B6BF04018E944BD00E05F5E /* SettingViewController.m in Sources */,
 				6B8F8A3018F52FE200DBC675 /* MKEntryPanel.m in Sources */,
