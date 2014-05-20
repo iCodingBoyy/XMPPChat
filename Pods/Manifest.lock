@@ -1,5 +1,5 @@
 PODS:
-  - CocoaAsyncSocket (7.3.4)
+  - CocoaAsyncSocket (7.3.5)
   - CocoaLumberjack (1.6.5.1):
     - CocoaLumberjack/Core
     - CocoaLumberjack/Extensions
@@ -143,9 +143,9 @@ DEPENDENCIES:
   - XMPPFramework (~> 3.6.4)
 
 SPEC CHECKSUMS:
-  CocoaAsyncSocket: 534d09416f992fd51efb23f534742ce70b3a7999
+  CocoaAsyncSocket: a3b6de9958961578b36eabb8e921efd95b13d80c
   CocoaLumberjack: 17803afbade3126a377d32b8d23367264b44ced6
   MBProgressHUD: 2bbc6f470111daf7f3eaa4eb12b8cbf01c4c0622
   XMPPFramework: eee9ed80df314067fac613c24223ad73834306b0
 
-COCOAPODS: 0.29.0
+COCOAPODS: 0.32.1

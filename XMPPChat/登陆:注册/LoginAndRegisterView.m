@@ -253,6 +253,7 @@
     
     __block LoginAndRegisterView *this = self;
     __block MBProgressHUD *thisHud = progressHUD;
+    
     YZXMPPManager *xmppMgr = [YZXMPPManager sharedYZXMPP];
     [xmppMgr registerWithName:_rNameTextField.text
                      passWord:_rPwdTextField.text
@@ -263,7 +264,6 @@
         
     } failure:^(XMPPErrorCode errorCode) {
         [thisHud hide:YES];
-//        DEBUG_METHOD(@"--rigisterError--%d",errorCode);
     }];
 }
 

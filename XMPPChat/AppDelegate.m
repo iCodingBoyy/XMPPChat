@@ -95,12 +95,18 @@
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     [self initTabBarController];
     
+    YZXMPPManager *xmppMgr = [YZXMPPManager sharedYZXMPP];
+    [xmppMgr LoginWithName:@"myz11"
+                  passWord:@"123"
+                  complete:^{} failure:^(XMPPErrorCode errorCode) {}];
+
+    
     self.window.backgroundColor = [UIColor blackColor];
     [self.window makeKeyAndVisible];
     
-    CGRect frame = [[UIScreen mainScreen]applicationFrame];
-    _userAuthView = [[LoginAndRegisterView alloc]initWithFrame:frame];
-    [self.window addSubview:_userAuthView];
+//    CGRect frame = [[UIScreen mainScreen]applicationFrame];
+//    _userAuthView = [[LoginAndRegisterView alloc]initWithFrame:frame];
+//    [self.window addSubview:_userAuthView];
     
     return YES;
 }

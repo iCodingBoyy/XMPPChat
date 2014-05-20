@@ -147,12 +147,12 @@
 
 - (void)controllerWillChangeContent:(NSFetchedResultsController *)controller
 {
-    NSLog(@"---%s---",__FUNCTION__);
+//    NSLog(@"---%s---",__FUNCTION__);
 }
 
 - (void)controllerDidChangeContent:(NSFetchedResultsController *)controller
 {
-    NSLog(@"---%s---",__FUNCTION__);
+//    NSLog(@"---%s---",__FUNCTION__);
     [self.tableView reloadData];
 }
 

@@ -272,6 +272,7 @@
 		6B13C38418E51667002E3AF0 /* XMPPChat */ = {
 			isa = PBXGroup;
 			children = (
+				6B68242C1924D9D70066AF31 /* category */,
 				6BFEB19118EA97E800D14B17 /* 聊天 */,
 				6BDE825718E51D6500356E41 /* XMPP */,
 				6B13C38D18E51667002E3AF0 /* AppDelegate.h */,
@@ -376,6 +377,13 @@
 				6B4ED21918EC127100E69BD1 /* YZChatToolBoxView.m */,
 			);
 			path = ToolBarView;
+			sourceTree = "<group>";
+		};
+		6B68242C1924D9D70066AF31 /* category */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = category;
 			sourceTree = "<group>";
 		};
 		6B6BF03418E9443B00E05F5E /* 动态 */ = {
@@ -825,14 +833,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = LaunchImage;
-				CODE_SIGN_IDENTITY = "iPhone Developer: JUNBO XIE (F648WK3EWP)";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: JUNBO XIE (F648WK3EWP)";
+				CODE_SIGN_IDENTITY = "iPhone Developer: guan haifeng (FRX8T974HA)";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer: guan haifeng (FRX8T974HA)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "XMPPChat/XMPPChat-Prefix.pch";
 				INFOPLIST_FILE = "XMPPChat/XMPPChat-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 5.1.1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE = "B55136A0-0478-404C-8270-2A50EDD6B761";
+				PROVISIONING_PROFILE = "EA7F6616-10F2-4BAD-B1AF-3E49EFD9B6FB";
 				WRAPPER_EXTENSION = app;
 			};
 			name = Debug;

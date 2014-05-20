@@ -17,36 +17,12 @@
 #define KWriteDataTimeOut -1
 
 
-typedef enum XMPP_FILE_TYPE
-{
-    xmpp_FILE_UNKNOWN,
-    XMPP_FILE_IMAGE,
-    XMPP_FILE_VOICE,
-    XMPP_FILE_VIDEO,
-    XMPP_FILE_FILE,
-    XMPP_FILE_OTHER,
-    
-}XMPP_FILE_TYPE;
-
-@interface XmppFileModel : NSObject
-@property (nonatomic, strong) NSString   *uuid;
-@property (nonatomic, strong) NSString   *fileName;
-@property (nonatomic, assign) UInt64      fileSize;
-@property (nonatomic, strong) NSString   *mimetype;
-@property (nonatomic, strong) NSString   *hashCode;
-@property (nonatomic, strong) NSString   *filePath;
-@property (nonatomic, strong) NSDate     *timeStamp;
-@property (nonatomic, assign) BOOL       isOutGoing;
-@property (nonatomic, strong) XMPPJID    *JID;
-@property (nonatomic, assign) XMPP_FILE_TYPE fileType;
-@end
-
-
-@interface XMPPSingleFTOperation: NSObject
-@property (nonatomic, strong) XMPPIQ *receiveIQ;
-@end
+#define KThumbnailImageMaxSideLen 80.0f
 
 
 @interface XMPPFileTransfer : XMPPModule
+{
+    
+}
 - (BOOL)sendImageWithData:(NSData*)imageData toJID:(XMPPJID*)jid;
 @end

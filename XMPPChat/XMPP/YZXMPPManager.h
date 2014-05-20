@@ -26,7 +26,7 @@
 //#define KXMPPHostName @"mayuansusumutekimacbook-pro.local"
 
 #define KXMPPHostPort 5222
-#define KXMPPResource @"Server"
+#define KXMPPResource @"Savvy"
 #define KXMPPConnectTimeOut 30
 
 

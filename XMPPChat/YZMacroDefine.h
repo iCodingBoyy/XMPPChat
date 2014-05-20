@@ -9,6 +9,13 @@
 #ifndef XMPPChat_YZMacroDefine_h
 #define XMPPChat_YZMacroDefine_h
 
+static inline CGFloat width(UIView *view) { return view.frame.size.width; }
+static inline CGFloat height(UIView *view) { return view.frame.size.height; }
+static inline int ScreenHeight(){ return [UIScreen mainScreen].bounds.size.height; }
+static inline int ScreenWidth(){ return [UIScreen mainScreen].bounds.size.width; }
+static inline int AppFrameHeight(){ return [UIScreen mainScreen].applicationFrame.size.height; }
+
+
 #define IS_IPHONE_5   (fabs((double)[[UIScreen mainScreen] bounds].size.height - (double )568) < DBL_EPSILON )
 #define KScreenWidth  [[UIScreen mainScreen]bounds].size.width
 #define KScreenHeight [[UIScreen mainScreen]bounds].size.height

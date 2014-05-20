@@ -15,6 +15,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 {
     IQUnknownState,
     IQStreamMethodListSingleState = 10,
+    iQStreamMethodReceiveFileInfoState,
     IQStreamMethodSubmitState,
     IQStreamMethodAUTNErrorState,
     IQServerDiscoInfoState,
@@ -22,7 +23,19 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     IQStreamXEP065FileTransState,
 };
 
+typedef enum XMPP_FILE_TYPE
+{
+    xmpp_FILE_UNKNOWN,
+    XMPP_FILE_IMAGE,
+    XMPP_FILE_VOICE,
+    XMPP_FILE_VIDEO,
+    XMPP_FILE_FILE,
+    XMPP_FILE_OTHER,
+    
+}XMPP_FILE_TYPE;
+
 @class XmppFileModel;
+@class XMPPSingleFTOperation;
 
 @protocol xmppFileDelegate <NSObject>
 
@@ -40,8 +53,20 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 
 
 #pragma mark -
-#pragma mark XmppFileModel
-//////////////////////////////////////XmppFileModel//////////////////////////////////////////////
+#pragma mark ////////////////////////XmppFileModel//////////////////////////////////
+
+@interface XmppFileModel : NSObject
+@property (nonatomic, strong) NSString   *uuid;
+@property (nonatomic, strong) NSString   *fileName;
+@property (nonatomic, assign) UInt64      fileSize;
+@property (nonatomic, strong) NSString   *mimetype;
+@property (nonatomic, strong) NSString   *hashCode;
+@property (nonatomic, strong) NSString   *filePath;
+@property (nonatomic, strong) NSDate     *timeStamp;
+@property (nonatomic, assign) BOOL       isOutGoing;
+@property (nonatomic, strong) XMPPJID    *JID;
+@property (nonatomic, assign) XMPP_FILE_TYPE fileType;
+@end
 
 @implementation XmppFileModel
 - (id)initWithReceiveIQ:(XMPPIQ*)inIQ
@@ -59,11 +84,18 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         _mimetype = [[si attributeForName:@"mime-type"]stringValue];
         _fileName = [[file attributeForName:@"name"]stringValue];
         _fileSize = (UInt64)[[[file attributeForName:@"size"]stringValue]longLongValue];
-        _hashCode = [[file attributeForName:@"hash"]stringValue];
+//        _hashCode = [[file attributeForName:@"hash"]stringValue];
         _isOutGoing = NO;
     }
     return self;
 }
+@end
+
+#pragma mark -
+#pragma mark ////////////////////////XMPPSingleFTOperation//////////////////////////////////
+
+@interface XMPPSingleFTOperation: NSObject
+@property (nonatomic, strong) XMPPIQ *receiveIQ;
 @end
 
 
@@ -127,8 +159,6 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         _iqState = IQStreamMethodListSingleState;
         
         [self performPostInitSetup];
-        
-        [self setupDiscoTimerForFTRequest];
     }
     return self;
 }
@@ -143,9 +173,13 @@ typedef  NS_ENUM( NSInteger, IQStateType)
         _isSendingFile = NO;
         _receiveIQ = inIQ;
         _senderJID = inIQ.from;
+        _iqState = iQStreamMethodReceiveFileInfoState;
+        
         _fileModel = [[XmppFileModel alloc]initWithReceiveIQ:inIQ];
         [self performPostInitSetup];
-        [self setupDiscoTimerForStreamHost];
+        
+        // 目标方三分钟未接受文件传输则超时
+        [self setupTimerForReceiveFile];
     }
     return self;
 }
@@ -186,8 +220,6 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 
 - (void)setupDiscoTimer:(NSTimeInterval)timeout
 {
-//	NSAssert(dispatch_get_current_queue() == fileTransQueue, @"Invoked on incorrect queue");
-	
 	if (discoTimer == NULL)
 	{
 		discoTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, fileTransQueue);
@@ -200,25 +232,34 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 	else
 	{
 		dispatch_time_t tt = dispatch_time(DISPATCH_TIME_NOW, (timeout * NSEC_PER_SEC));
-		
 		dispatch_source_set_timer(discoTimer, tt, DISPATCH_TIME_FOREVER, 0.1);
 	}
 }
 
-- (void)setupDiscoTimerForFTRequest
+// 初始方等待目标方接收超时<三分钟传输超时>
+- (void)setupTimerForSendFile
 {
     [self setupDiscoTimer:180.0];
     dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
-        
-        // 等待接收方回应超时<三分钟传输超时>
 		[self didFailSendFile];
         
 	}});
 }
 
+// 目标方接收文件传输超时《三分钟未接收则超时》
+- (void)setupTimerForReceiveFile
+{
+    [self setupDiscoTimer:180.0];
+    dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
+		[self didFailRecFile];
+        
+	}});
+}
+
+// 目标方等待接收流主机超时
 - (void)setupDiscoTimerForStreamHost
 {
-    [self setupDiscoTimer:30.0];
+    [self setupDiscoTimer:60.0];
     dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
         
         // 等待接收流主机超时<30s传输超时>
@@ -227,9 +268,27 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 	}});
 }
 
+// 初始方请求服务发现超时，目标方等待服务发现超时
+- (void)setupTimerForServerDisco
+{
+    [self setupDiscoTimer:30.0];
+    dispatch_source_set_event_handler(discoTimer, ^{ @autoreleasepool {
+        
+        if (_isSendingFile)
+        {
+            [self didFailSendFile];
+        }
+		else
+        {
+            [self didFailRecFile];
+        }
+        
+	}});
+}
+
 - (void)cancelTimer
 {
-    if (discoTimer)
+    if (discoTimer != NULL)
 	{
 		dispatch_source_cancel(discoTimer);
 		dispatch_release(discoTimer);
@@ -238,7 +297,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 
 - (void)cleanUpTimer
 {
-    if (discoTimer)
+    if (discoTimer != NULL)
 	{
 		dispatch_source_cancel(discoTimer);
 		dispatch_release(discoTimer);
@@ -246,16 +305,57 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 	}
 }
 
+- (void)sendServerDiscoRequest:(XMPPIQ*)inIq
+{
+    _iqState = IQServerDiscoInfoState;
+    _serverUUID = _xmppStream.generateUUID;
+    
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"get" elementID:_serverUUID];
+    [iq addAttributeWithName:@"to" stringValue:inIq.fromStr];
+    [iq addAttributeWithName:@"from" stringValue:_xmppStream.myJID.full];
+    _serverUUID = iq.elementID;
+    
+    NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#info"];
+    [iq addChild:query];
+    
+    [_xmppStream sendElement:iq];
+}
+
+
+- (void)responseServerDiscoRequest:(XMPPIQ*)inIQ
+{
+    _iqState = IQServerDiscoResponseState;
+    
+    NSXMLElement *identity = [NSXMLElement elementWithName:@"identity"];
+    [identity addAttributeWithName:@"category" stringValue:@"proxy"];
+    [identity addAttributeWithName:@"type" stringValue:@"bytestreams"];
+    [identity addAttributeWithName:@"name" stringValue:@"SOCKS5 Bytestreams Service"];
+    
+    NSXMLElement *feature = [NSXMLElement elementWithName:@"feature"];
+    [feature addAttributeWithName:@"var" stringValue:@"http://jabber.org/protocol/bytestreams"];
+    
+    NSXMLElement *query = [NSXMLElement elementWithName:@"query" xmlns:@"http://jabber.org/protocol/disco#info"];
+    [query addChild:identity];
+    [query addChild:feature];
+    
+    
+    XMPPIQ *iq = [XMPPIQ iqWithType:@"result" to:inIQ.from elementID:inIQ.elementID child:query];
+    
+    [_xmppStream sendElement:iq];
+}
+
 #pragma mark -
 #pragma mark XMPPStream Delegate
 
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
 {
+    DEBUG_METHOD(@"----%s--%@",__FUNCTION__,inIq.description);
     if (_serverUUID == nil)
     {
         _serverUUID = inIq.elementID;
     }
     
+    // 初始方收到目标方接收文件传输应答
     if (_iqState == IQStreamMethodListSingleState)
     {
         if ([_serverUUID isEqualToString:inIq.elementID])
@@ -268,31 +368,28 @@ typedef  NS_ENUM( NSInteger, IQStateType)
                     NSXMLElement *feature = [si elementForName:@"feature"];
                     if (feature && [feature.xmlns isEqualToString:@"http://jabber.org/protocol/feature-neg"])
                     {
-                        // 开始发送文件
-                        [self cleanUpTimer];
-                        _iqState = IQStreamMethodSubmitState;
-                        DEBUG_METHOD(@"--初始方开始发送文件--");
-                        [self didSendFile];
-                        
-                        [TURNSocket initialize];
-                        [TURNSocket setProxyCandidates:[NSArray arrayWithObjects:@"www.savvy-tech.net", nil]];
-                        _turnSocket = [[TURNSocket alloc]initWithStream:_xmppStream toJID:inIq.from];
-                        [_turnSocket startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+                        DEBUG_METHOD(@"---初始方发送服务发现请求给目标方--");
+                        [self sendServerDiscoRequest:inIq];
+                        [self setupTimerForServerDisco];
                     }
                 }
-            }//if
+            }//if type
             
             if ([inIq.type isEqualToString:@"error"])
             {
-                DEBUG_METHOD(@"--对方拒绝接受文件传输--");
+                DEBUG_METHOD(@"--目标方拒绝接受文件传输--");
                 [self cleanUpTimer];
                 _iqState = IQStreamMethodAUTNErrorState;
                 [self didFailSendFile];
-            }
+                
+            }// if type
+            
         }//if
     }
     
-    if (_iqState == IQStreamMethodSubmitState)
+    
+    // 目标方接收初始方主机端口和ip进入文件传输状态
+    if (_iqState == IQServerDiscoResponseState)
     {
         _iqState = IQStreamXEP065FileTransState;
         
@@ -309,6 +406,56 @@ typedef  NS_ENUM( NSInteger, IQStateType)
             else
             {
                 DEBUG_METHOD(@"--socket已经存在，无需建立连接--");
+            }
+        }
+    }
+    
+    // 初始方接收到目标方服务发现应答，进入文件xep-065传输状态
+    if (_iqState == IQServerDiscoInfoState)
+    {
+        if ([_serverUUID isEqualToString:inIq.elementID])
+        {
+            if ([inIq.type isEqualToString:@"result"])
+            {
+                NSXMLElement *query = [inIq elementForName:@"query"];
+                if (query && [query.xmlns isEqualToString:@"http://jabber.org/protocol/disco#info"])
+                {
+                    NSArray *featureArray = [query elementsForName:@"feature"];
+                    for (NSXMLElement *feature in featureArray)
+                    {
+                        NSString *var = [feature attributeStringValueForName:@"var"];
+                        if ([var isEqualToString:@"http://jabber.org/protocol/bytestreams"])
+                        {
+                            DEBUG_METHOD(@"--初始方接收目标方服务发现请求应答，开始发送文件--");
+                            _iqState = IQStreamXEP065FileTransState;
+                            
+                            [self cleanUpTimer];
+                            [self didSendFile];
+                            
+                            [TURNSocket initialize];
+                            [TURNSocket setProxyCandidates:[NSArray arrayWithObjects:@"www.savvy-tech.net", nil]];
+                            _turnSocket = [[TURNSocket alloc]initWithStream:_xmppStream toJID:inIq.from];
+                            [_turnSocket startWithDelegate:self delegateQueue:dispatch_get_main_queue()];
+                            break;
+                        }
+
+                    }
+                }
+            }// if type
+        }
+    }
+    
+    // 目标方接收并响应服务发现请求
+    if (_iqState == IQStreamMethodSubmitState)
+    {
+        if ([inIq.type isEqualToString:@"get"])
+        {
+            NSXMLElement *query = [inIq elementForName:@"query"];
+            if (query && [query.xmlns isEqualToString:@"http://jabber.org/protocol/disco#info"])
+            {
+                DEBUG_METHOD(@"---目标方接收到服务发现请求---");
+                [self responseServerDiscoRequest:inIq];
+                [self setupDiscoTimerForStreamHost];
             }
         }
     }
@@ -710,8 +857,9 @@ typedef  NS_ENUM( NSInteger, IQStateType)
      </iq>
      */
     _iqState = IQStreamMethodListSingleState;
-    
     NSString *uuid = [_xmppStream generateUUID];
+    _serverUUID = uuid;
+    
     XMPPIQ *iq = [XMPPIQ iqWithType:@"set" elementID:uuid];
     [iq addAttributeWithName:@"to" stringValue:toJID.full];
     
@@ -724,8 +872,8 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     NSXMLElement *file = [NSXMLElement elementWithName:@"file" xmlns:@"http://jabber.org/protocol/si/profile/file-transfer"];
     [file addAttributeWithName:@"name" stringValue:fileName];
     [file addAttributeWithName:@"size" stringValue:fileSize];
-    [file addAttributeWithName:@"hash" stringValue:hashCode];
-    [file addAttributeWithName:@"date" stringValue:fileDate];
+//    [file addAttributeWithName:@"hash" stringValue:hashCode];
+//    [file addAttributeWithName:@"date" stringValue:fileDate];
     [si addChild:file];
     
     // 添加文件描述
@@ -750,13 +898,16 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     NSXMLElement *value = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/bytestreams"];
     [option addChild:value];
     
-    NSXMLElement *option2 = [NSXMLElement elementWithName:@"option"];
-    [field addChild:option2];
-    
-    NSXMLElement *value2 = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/ibb"];
-    [option2 addChild:value2];
+//    NSXMLElement *option2 = [NSXMLElement elementWithName:@"option"];
+//    [field addChild:option2];
+//    
+//    NSXMLElement *value2 = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/ibb"];
+//    [option2 addChild:value2];
     
     [_xmppStream sendElement:iq];
+    
+    // 初始方等待目标方接收文件传输超时定时器
+    [self setupTimerForSendFile];
 }
 
 
@@ -771,22 +922,21 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     // 发送代理响应<接受文件传输>
     /*
      <iq type='result' to='sender@jabber.org/resource' id='offer1'>
-     <si xmlns='http://jabber.org/protocol/si'>
-     <feature xmlns='http://jabber.org/protocol/feature-neg'>
-     <x xmlns='jabber:x:data' type='submit'>
-     <field var='stream-method'>
-     <value>http://jabber.org/protocol/bytestreams</value>
-     </field>
-     </x>
-     </feature>
-     </si>
+         <si xmlns='http://jabber.org/protocol/si'>
+             <feature xmlns='http://jabber.org/protocol/feature-neg'>
+                 <x xmlns='jabber:x:data' type='submit'>
+                     <field var='stream-method'>
+                         <value>http://jabber.org/protocol/bytestreams</value>
+                     </field>
+                 </x>
+             </feature>
+         </si>
      </iq>
      */
     
     DEBUG_METHOD(@"---%s---",__FUNCTION__);
     
     _iqState = IQStreamMethodSubmitState;
-    _serverUUID = inIQ.elementID;
     
     NSString *iqId = [inIQ attributeStringValueForName:@"id"];
     
@@ -795,9 +945,6 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     
     NSXMLElement *si = [NSXMLElement elementWithName:@"si" xmlns:@"http://jabber.org/protocol/si"];
     [iq addChild:si];
-    
-    NSXMLElement *file = [NSXMLElement elementWithName:@"file" xmlns:@"http://jabber.org/protocol/si/profile/file-transfer"];
-    [si addChild:file];
     
     NSXMLElement *feature = [NSXMLElement elementWithName:@"feature" xmlns:@"http://jabber.org/protocol/feature-neg"];
     [si addChild:feature];
@@ -813,7 +960,12 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     NSXMLElement *value = [NSXMLElement elementWithName:@"value" stringValue:@"http://jabber.org/protocol/bytestreams"];
     [field addChild:value];
     
+    DEBUG_METHOD(@"--inIQ---%@",iq.description);
+    
     [_xmppStream sendElement:iq];
+    
+    // 目标方等待服务发现请求超时定时器
+    [self setupTimerForServerDisco];
     
     // 目标方接收文件传输
     dispatch_async(delegateQueue, ^{
@@ -824,6 +976,8 @@ typedef  NS_ENUM( NSInteger, IQStateType)
             }
         }
     });
+    
+    
 }
 
 
@@ -838,15 +992,14 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     // 发送拒绝文件传输响应信息
     /*
      <iq id='' to='' from='' type='error'>
-     <error code='403' type='AUTH'>
-     <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
-     </error>
+         <error code='403' type='AUTH'>
+            <forbidden xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'>
+         </error>
      </iq>
      */
     
     DEBUG_METHOD(@"---%s---",__FUNCTION__);
     _iqState = IQStreamMethodAUTNErrorState;
-    _serverUUID = inIQ.elementID;
     
     NSString *iqId = [inIQ attributeStringValueForName:@"id"];
     
@@ -863,6 +1016,8 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     
     [_xmppStream sendElement:iq];
     
+    [self cleanUpTimer];
+    
     // 目标方拒绝文件传输
     dispatch_async(delegateQueue, ^{
         @autoreleasepool {
@@ -877,6 +1032,8 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 
 @end
 
+#pragma mark -
+#pragma mark ////////////////////////XMPPFileTransfer//////////////////////////////////
 
 @interface XMPPFileTransfer() <xmppFileDelegate>
 {
@@ -922,22 +1079,75 @@ typedef  NS_ENUM( NSInteger, IQStateType)
     [super deactivate];
 }
 
+- (UIImage*)scaleImage:(UIImage*)image
+{
+    if (image == nil)
+    {
+        return nil;
+    }
+    CGFloat maxSize = (image.size.width > image.size.height) ? image.size.width : image.size.height;
+    CGFloat scaleSize = KThumbnailImageMaxSideLen/maxSize;
+    CGSize size = CGSizeMake(image.size.width*scaleSize, image.size.height*scaleSize);
+    UIGraphicsBeginImageContext(size);
+    [image drawInRect:CGRectMake(0, 0, image.size.width*scaleSize, image.size.height*scaleSize)];
+    UIImage *scaleImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return scaleImage;
+}
+
+- (NSString*)xmppResourcePath
+{
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory,NSUserDomainMask,YES);
+    if (paths && paths.count > 0)
+    {
+        NSString *path = [paths objectAtIndex:0];
+        NSString *extensionPath = [NSString stringWithFormat:@"xmppChat/%@",xmppStream.myJID.full];
+        NSString *filePath = [path stringByAppendingPathComponent:extensionPath];
+        return filePath;
+    }
+    return nil;
+}
+
 - (BOOL)sendImageWithData:(NSData*)imageData toJID:(XMPPJID*)jid
 {
+    DEBUG_METHOD(@"---%s---",__func__);
+    
     NSString *fileName = [NSString stringWithFormat:@"%@.png",xmppStream.generateUUID];
     
+    // 将大图像写入fullImage
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES);
-    NSString *docDir = [paths objectAtIndex:0];
-    NSString *filePath = [docDir stringByAppendingPathComponent:fileName];
+    NSString *path = [paths objectAtIndex:0];
+    
+//    NSString *myResourcePath = [self xmppResourcePath];
+//    NSString *extensionpath = [NSString stringWithFormat:@"%@/fullImage/%@",jid.full,fileName];
+    NSString *filePath = [path stringByAppendingPathComponent:fileName];
     
     NSFileManager *filemanager = [NSFileManager defaultManager];
     if (![filemanager fileExistsAtPath:filePath])
     {
         if (![filemanager createFileAtPath:filePath contents:imageData attributes:nil])
         {
+            DEBUG_METHOD(@"创建fullImage出错");
             return NO;
         }
     }
+    
+    // 将小图像写入thumbnail
+//    UIImage *image = [UIImage imageWithData:imageData];
+//    UIImage *scaleImage = [self scaleImage:image];
+//    NSData *scaleData = UIImagePNGRepresentation(scaleImage);
+//    
+//    NSString *appendPath = [NSString stringWithFormat:@"%@/thumbnail/%@",jid.full,fileName];
+//    NSString *thumbnailPath = [myResourcePath stringByAppendingPathComponent:appendPath];
+//    if (![filemanager fileExistsAtPath:thumbnailPath])
+//    {
+//        if (![filemanager createFileAtPath:thumbnailPath contents:scaleData attributes:nil])
+//        {
+//            DEBUG_METHOD(@"创建thumailPath出错");
+//            return NO;
+//        }
+//    }
+
     
     NSFileHandle *handle = [NSFileHandle fileHandleForReadingAtPath:filePath];
     NSUInteger fileSize = [handle availableData].length;
@@ -966,6 +1176,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
                                   hash:@"552da749930852c69ae5d2141d3766b1"
                                   date:@"1969-07-21T02:56:15Z"];
     [_fileTsQueueArray addObject:fileTrans];
+    DEBUG_METHOD(@"发送文件");
     return YES;
 }
 
@@ -975,7 +1186,7 @@ typedef  NS_ENUM( NSInteger, IQStateType)
 
 - (BOOL)xmppStream:(XMPPStream *)sender didReceiveIQ:(XMPPIQ *)inIq
 {
-    DEBUG_METHOD(@"----%s--",__FUNCTION__);
+    DEBUG_METHOD(@"----%s--%@",__FUNCTION__,inIq.description);
     if ([inIq.type isEqualToString:@"set"])
     {
         NSXMLElement *si = [inIq elementForName:@"si"];

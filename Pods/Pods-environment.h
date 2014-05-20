@@ -10,7 +10,7 @@
 #define COCOAPODS_POD_AVAILABLE_CocoaAsyncSocket
 #define COCOAPODS_VERSION_MAJOR_CocoaAsyncSocket 7
 #define COCOAPODS_VERSION_MINOR_CocoaAsyncSocket 3
-#define COCOAPODS_VERSION_PATCH_CocoaAsyncSocket 4
+#define COCOAPODS_VERSION_PATCH_CocoaAsyncSocket 5
 
 // CocoaLumberjack
 #define COCOAPODS_POD_AVAILABLE_CocoaLumberjack

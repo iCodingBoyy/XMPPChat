@@ -292,7 +292,7 @@
 
 - (void)xmppStreamDidRegister:(XMPPStream *)sender
 {
-    NSLog(@"---Register---%@",sender.myJID.user);
+    DEBUG_METHOD(@"---Register---%@",sender.myJID.user);
     [_xmppRoster setNickname:sender.myJID.user forUser:sender.myJID];
     
     if (_authCompleteBlock)
@@ -334,8 +334,6 @@
         return NO;
     }
     
-//    NSString *xmppJIDString = [NSString stringWithFormat:@"%@@%@/%@",loginName,KXMPPHostName,KXMPPResource];
-//    XMPPJID *xmppJID = [XMPPJID jidWithString:xmppJIDString];
     XMPPJID *xmppJID = [XMPPJID jidWithUser:loginName domain:KXMPPHostName resource:KXMPPResource];
     [_xmppStream setMyJID:xmppJID];
     
