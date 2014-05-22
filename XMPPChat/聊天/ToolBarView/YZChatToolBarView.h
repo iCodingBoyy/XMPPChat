@@ -15,6 +15,9 @@
 @end
 
 @interface YZChatToolBarView : UIView
-@property (nonatomic, OBJ_WEAK) id<YZChatToolBarDeleagte> delegate;
-- (void)TBScrollViewWillBeginDragging:(UIScrollView *)scrollView;
+/*!
+ *
+ */
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, unsafe_unretained) id<YZChatToolBarDeleagte> delegate;
 @end

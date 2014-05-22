@@ -89,8 +89,18 @@ UINavigationControllerDelegate,UIImagePickerControllerDelegate,UIActionSheetDele
 {
     CGRect frame = CGRectMake(0, KScreenHeight - 114, KScreenWidth, 266);
     _toolBarView = [[YZChatToolBarView alloc]initWithFrame:frame];
+    _toolBarView.scrollView = _tableView;
     _toolBarView.delegate = self;
     [self.view addSubview:_toolBarView];
+}
+
+
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    [self initTableView];
+    [self initChatToolBarView];
 }
 
 - (NSFetchedResultsController *)fetchedResultsController
@@ -133,33 +143,16 @@ UINavigationControllerDelegate,UIImagePickerControllerDelegate,UIActionSheetDele
 
 - (void)controllerWillChangeContent:(NSFetchedResultsController *)controller
 {
-//    NSLog(@"---%s---",__FUNCTION__);
+    //    NSLog(@"---%s---",__FUNCTION__);
 }
 
 - (void)controllerDidChangeContent:(NSFetchedResultsController *)controller
 {
-//    NSLog(@"---%s---",__FUNCTION__);
+    //    NSLog(@"---%s---",__FUNCTION__);
     [self.tableView reloadData];
 }
 
 
-
-- (void)viewDidLoad
-{
-    [super viewDidLoad];
-    [self initTableView];
-    [self initChatToolBarView];
-}
-
-
-#pragma mark -
-#pragma mark UIScrollView Delegate
-
-- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
-{
-    [self.view endEditing:YES];
-    [_toolBarView TBScrollViewWillBeginDragging:scrollView];
-}
 
 #pragma mark -
 #pragma mark YZChatToolBarDeleagte

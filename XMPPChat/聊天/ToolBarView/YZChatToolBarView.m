@@ -29,7 +29,6 @@
 @implementation YZChatToolBarView
 - (void)dealloc
 {
-    DEBUG_METHOD(@"--%s--",__FUNCTION__);
     [[NSNotificationCenter defaultCenter]removeObserver:self];
 }
 
@@ -258,7 +257,7 @@
         {
             [UIView animateWithDuration:.35
                              animations:^{
-                                 
+                                 _scrollView.transform = CGAffineTransformIdentity;
                                  self.transform = CGAffineTransformIdentity;
                              }
                              completion:^(BOOL finished) {
@@ -293,6 +292,7 @@
             _faceboardView.transform = CGAffineTransformMakeTranslation(0, -216);
             [UIView animateWithDuration:.35
                              animations:^{
+                                 _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
                                  self.transform = CGAffineTransformMakeTranslation(0, -216);
                                  
                              }];
@@ -370,6 +370,7 @@
             _toolBoxView.transform = CGAffineTransformMakeTranslation(0, -216);
             [UIView animateWithDuration:.35
                              animations:^{
+                                 _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
                                  self.transform = CGAffineTransformMakeTranslation(0, -216);
                              }];
         }
@@ -431,6 +432,7 @@
                          animations:^{
                              _faceboardView.transform = CGAffineTransformIdentity;
                              _toolBoxView.transform = CGAffineTransformIdentity;
+                             _scrollView.transform = CGAffineTransformMakeTranslation(0, transY);
                              self.transform = CGAffineTransformMakeTranslation(0, transY);
                          }];
     }
@@ -445,6 +447,7 @@
                          animations:^{
                              _faceboardView.transform = CGAffineTransformIdentity;
                              _toolBoxView.transform = CGAffineTransformIdentity;
+                             _scrollView.transform = CGAffineTransformIdentity;
                              self.transform = CGAffineTransformIdentity;
                          }];
     }
@@ -453,6 +456,7 @@
         [UIView animateWithDuration:.35
                          animations:^{
                              _faceboardView.transform = CGAffineTransformMakeTranslation(0, -216);
+                             _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
                              self.transform = CGAffineTransformMakeTranslation(0, -216);
                          }];
     }
@@ -461,6 +465,7 @@
         [UIView animateWithDuration:.35
                          animations:^{
                              _toolBoxView.transform = CGAffineTransformMakeTranslation(0, -216);
+                             _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
                              self.transform = CGAffineTransformMakeTranslation(0, -216);
                          }];
     }
@@ -545,34 +550,43 @@
     }
 }
 
-// 拖拽列表，放下工具栏
-- (void)TBScrollViewWillBeginDragging:(UIScrollView *)scrollView
-{
-    
-    if (_isKeyboardShow || _isFaceBoardShow || _isToolBoxShow)
-    {
-        [UIView animateWithDuration:.35
-                         animations:^{
-                             self.transform = CGAffineTransformIdentity;
-                         }completion:^(BOOL finished) {
-                             _faceboardView.transform = CGAffineTransformIdentity;
-                             _toolBoxView.transform = CGAffineTransformIdentity;
-                         }];
-    }
-    
-    if (_isFaceBoardShow)
-    {
-        [self showFaceBgForFaceButton];
-    }
-    if (_isToolBoxShow)
-    {
-        [self showBoxBgForBoxButton];
-    }
-    
-    _isKeyboardShow = NO;
-    _isFaceBoardShow = NO;
-    _isToolBoxShow = NO;
-}
 
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
+{
+    if (CGRectContainsPoint(self.bounds, point))
+    {
+        return YES;
+    }
+    else
+    {
+        [self endEditing:YES];
+        if (_isKeyboardShow || _isFaceBoardShow || _isToolBoxShow)
+        {
+            [UIView animateWithDuration:.35
+                             animations:^{
+                                 _scrollView.transform = CGAffineTransformIdentity;
+                                 self.transform = CGAffineTransformIdentity;
+                             }completion:^(BOOL finished) {
+                                 _faceboardView.transform = CGAffineTransformIdentity;
+                                 _toolBoxView.transform = CGAffineTransformIdentity;
+                             }];
+        }
+        
+        if (_isFaceBoardShow)
+        {
+            [self showFaceBgForFaceButton];
+        }
+        if (_isToolBoxShow)
+        {
+            [self showBoxBgForBoxButton];
+        }
+        
+        _isKeyboardShow = NO;
+        _isFaceBoardShow = NO;
+        _isToolBoxShow = NO;
+        return NO;
+    }
+
+}
 
 @end

@@ -287,11 +287,6 @@
     [bgImage drawInRect:rect];
 }
 
-//- (void)textFieldDidBeginEditing:(UITextField *)textField
-//{
-//    [_leftScrollView adjustOffsetToIdealIfNeeded];
-//    []
-//}
 
 -(BOOL)textFieldShouldReturn:(UITextField *)textField
 {
