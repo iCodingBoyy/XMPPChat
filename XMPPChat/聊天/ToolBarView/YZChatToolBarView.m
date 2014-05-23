@@ -150,6 +150,15 @@
     [self addSubview:_toolBarView];
 }
 
+- (CGFloat)offsetOfScrollView:(UIScrollView*)scrollView keyBoardHeight:(CGFloat)height
+{
+    CGFloat result = scrollView.frame.size.height - scrollView.contentSize.height;
+    result = result > 0 ? result : 0;
+    CGFloat offset = fabsf(height) - result;
+    offset = offset > 0 ? offset : 0;
+    return offset;
+}
+
 
 #pragma mark -
 #pragma mark 设置工具条按钮背景
@@ -292,7 +301,8 @@
             _faceboardView.transform = CGAffineTransformMakeTranslation(0, -216);
             [UIView animateWithDuration:.35
                              animations:^{
-                                 _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
+                                 CGFloat offset = [self offsetOfScrollView:_scrollView keyBoardHeight:216];
+                                 _scrollView.transform = CGAffineTransformMakeTranslation(0, -offset);
                                  self.transform = CGAffineTransformMakeTranslation(0, -216);
                                  
                              }];
@@ -370,7 +380,8 @@
             _toolBoxView.transform = CGAffineTransformMakeTranslation(0, -216);
             [UIView animateWithDuration:.35
                              animations:^{
-                                 _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
+                                 CGFloat offset = [self offsetOfScrollView:_scrollView keyBoardHeight:216];
+                                 _scrollView.transform = CGAffineTransformMakeTranslation(0, -offset);
                                  self.transform = CGAffineTransformMakeTranslation(0, -216);
                              }];
         }
@@ -418,6 +429,7 @@
 }
 
 
+
 #pragma mark -
 #pragma mark keyBoardNotification
 
@@ -432,7 +444,8 @@
                          animations:^{
                              _faceboardView.transform = CGAffineTransformIdentity;
                              _toolBoxView.transform = CGAffineTransformIdentity;
-                             _scrollView.transform = CGAffineTransformMakeTranslation(0, transY);
+                             CGFloat offset = [self offsetOfScrollView:_scrollView keyBoardHeight:transY];
+                             _scrollView.transform = CGAffineTransformMakeTranslation(0, -offset);
                              self.transform = CGAffineTransformMakeTranslation(0, transY);
                          }];
     }
@@ -456,7 +469,8 @@
         [UIView animateWithDuration:.35
                          animations:^{
                              _faceboardView.transform = CGAffineTransformMakeTranslation(0, -216);
-                             _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
+                             CGFloat offset = [self offsetOfScrollView:_scrollView keyBoardHeight:216];
+                             _scrollView.transform = CGAffineTransformMakeTranslation(0, -offset);
                              self.transform = CGAffineTransformMakeTranslation(0, -216);
                          }];
     }
@@ -465,7 +479,8 @@
         [UIView animateWithDuration:.35
                          animations:^{
                              _toolBoxView.transform = CGAffineTransformMakeTranslation(0, -216);
-                             _scrollView.transform = CGAffineTransformMakeTranslation(0, -216);
+                             CGFloat offset = [self offsetOfScrollView:_scrollView keyBoardHeight:216];
+                             _scrollView.transform = CGAffineTransformMakeTranslation(0, -offset);
                              self.transform = CGAffineTransformMakeTranslation(0, -216);
                          }];
     }
