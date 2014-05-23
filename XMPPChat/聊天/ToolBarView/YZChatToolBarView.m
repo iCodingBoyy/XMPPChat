@@ -11,6 +11,11 @@
 #import "YZChatFaceBoardView.h"
 #import "YZChatToolBoxView.h"
 
+#define BundleName @"YZToolBarImage.bundle"
+
+#define BundleImage(image) [NSString stringWithFormat:@"%@/%@",BundleName,image]
+#define BundlePathImage(path,image) [NSString stringWithFormat:@"%@/%@/%@",BundleName,path,image]
+
 
 @interface YZChatToolBarView() <UITextViewDelegate,UIScrollViewDelegate>
 @property (nonatomic, strong) UITextView *msgTextView;
@@ -41,6 +46,7 @@
         [self initToolBarView];
         [self initFaceBoardAndToolBoxView];
         [self registerNotification];
+        
     }
     return self;
 }
@@ -80,7 +86,7 @@
     _toolBarView.autoresizesSubviews = YES;
 
     UIImageView *toolBarBgImageView = [[UIImageView alloc]initWithFrame:CGRectMake(0, 0, KScreenWidth, 50)];
-    toolBarBgImageView.image = [[UIImage imageNamed:@"toolbar_bottom_bar"]stretchableImageWithLeftCapWidth:5 topCapHeight:25];
+    toolBarBgImageView.image = [[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"toolbar_bottom_bar")] stretchableImageWithLeftCapWidth:5 topCapHeight:25];
     toolBarBgImageView.autoresizingMask = UIViewAutoresizingFlexibleHeight;
     [_toolBarView addSubview:toolBarBgImageView];
     
@@ -89,8 +95,8 @@
     // 语音按钮
     _voiceButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [_voiceButton setFrame:CGRectMake(10, height - 42, 34, 34)];
-    UIImage *norImage = [UIImage imageNamed:@"chat_bottom_voice_nor"];
-    UIImage *highlightImage = [UIImage imageNamed:@"chat_bottom_voice_press"];
+    UIImage *norImage = [UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_voice_nor")];
+    UIImage *highlightImage = [UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_voice_press")];
     [_voiceButton setBackgroundImage:norImage forState:UIControlStateNormal];
     [_voiceButton setBackgroundImage:highlightImage forState:UIControlStateHighlighted];
     [_voiceButton addTarget:self action:@selector(clickToSpeak:) forControlEvents:UIControlEventTouchUpInside];
@@ -116,7 +122,7 @@
     // 录音按钮
     _speakButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [_speakButton setFrame:CGRectMake(50, height - 45, 180, 40)];
-    [_speakButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_textfield"] forState:UIControlStateNormal];
+    [_speakButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_textfield")] forState:UIControlStateNormal];
     [_speakButton addTarget:self action:@selector(clickToRecordVoice:) forControlEvents:UIControlEventTouchUpInside];
     [_speakButton setTitleColor:[UIColor blueColor] forState:UIControlStateNormal];
     [_speakButton setTitle:@"按住说话" forState:UIControlStateNormal];
@@ -128,8 +134,8 @@
     // 表情按钮
     _faceButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [_faceButton setFrame:CGRectMake(243, height - 42, 34, 34)];
-    UIImage *faceNorImage = [UIImage imageNamed:@"chat_bottom_smile_nor"];
-    UIImage *faceHighlightImage = [UIImage imageNamed:@"chat_bottom_smile_press"];
+    UIImage *faceNorImage = [UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_smile_nor")];
+    UIImage *faceHighlightImage = [UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_smile_press")];
     [_faceButton setBackgroundImage:faceNorImage forState:UIControlStateNormal];
     [_faceButton setBackgroundImage:faceHighlightImage forState:UIControlStateHighlighted];
     [_faceButton addTarget:self action:@selector(clickToPickFace:) forControlEvents:UIControlEventTouchUpInside];
@@ -139,8 +145,8 @@
     // 工具栏按钮
     _boxButton = [UIButton buttonWithType:UIButtonTypeCustom];
     [_boxButton setFrame:CGRectMake(280, height - 42, 34, 34)];
-    UIImage *boxNorImage = [UIImage imageNamed:@"chat_bottom_up_nor"];
-    UIImage *boxHighlightImage = [UIImage imageNamed:@"chat_bottom_up_press"];
+    UIImage *boxNorImage = [UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_up_nor")];
+    UIImage *boxHighlightImage = [UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_up_press")];
     [_boxButton setBackgroundImage:boxNorImage forState:UIControlStateNormal];
     [_boxButton setBackgroundImage:boxHighlightImage forState:UIControlStateHighlighted];
     [_boxButton addTarget:self action:@selector(clickToPickTools:) forControlEvents:UIControlEventTouchUpInside];
@@ -165,49 +171,49 @@
 
 - (void)showkeyboardBgForFaceButton
 {
-    [_faceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_keyboard_nor"]
+    [_faceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_keyboard_nor")]
                            forState:UIControlStateNormal];
-    [_faceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_keyboard_press"]
+    [_faceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_keyboard_press")]
                            forState:UIControlStateHighlighted];
 }
 
 - (void)showFaceBgForFaceButton
 {
-    [_faceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_smile_nor"]
+    [_faceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_smile_nor")]
                            forState:UIControlStateNormal];
-    [_faceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_smile_press"]
+    [_faceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_smile_press")]
                            forState:UIControlStateHighlighted];
 }
 
 - (void)showKeyBoardBgForBoxButon
 {
-    [_boxButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_keyboard_nor"]
+    [_boxButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_keyboard_nor")]
                            forState:UIControlStateNormal];
-    [_boxButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_keyboard_press"]
+    [_boxButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_keyboard_press")]
                            forState:UIControlStateHighlighted];
 }
 
 - (void)showBoxBgForBoxButton
 {
-    [_boxButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_up_nor"]
+    [_boxButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_up_nor")]
                           forState:UIControlStateNormal];
-    [_boxButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_up_press"]
+    [_boxButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_up_press")]
                           forState:UIControlStateHighlighted];
 }
 
 - (void)showKeyBoardBgForVoiceButon
 {
-    [_voiceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_keyboard_nor.png"]
+    [_voiceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_keyboard_nor.png")]
                       forState:UIControlStateNormal];
-    [_voiceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_keyboard_press.png"]
+    [_voiceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_keyboard_press.png")]
                       forState:UIControlStateHighlighted];
 }
 
 - (void)showVoiceBgForSpeakButton
 {
-    [_voiceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_voice_nor.png"]
+    [_voiceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_voice_nor.png")]
                             forState:UIControlStateNormal];
-    [_voiceButton setBackgroundImage:[UIImage imageNamed:@"chat_bottom_voice_press.png"]
+    [_voiceButton setBackgroundImage:[UIImage imageNamed:BundlePathImage(@"toolBarImage",@"chat_bottom_voice_press.png")]
                             forState:UIControlStateHighlighted];
 }
 
